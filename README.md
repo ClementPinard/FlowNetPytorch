@@ -35,6 +35,15 @@ For further help you can type
 
 In this repo we address the question of splitted dataset and random transformations for both input and target, which are not currently formalized in official repo. It may change greatly in the future as Pytorch gets updated.
 
+### Splitted dataset
+
+In order to allow user to specify easily what proportion of the whole dataset must be used for validation, we added a `train()` or `eval()` option to disable random transformation, and get samples from test list instead when `eval()` is called.
+TODO : we should have different sets of transformations for train or test mode, instead of just disabling it for test mode.
+
+### Random Transformations
+
+In order to have coherent transformations between inputs and target, we must define new transformations that take both input and target, as a new random variable is defined each time a random transformation is called.
+
 ### Flow Transformations
 
 To allow data augmentation, we have considered rotation and translations for inputs and their result on target flow Map.
