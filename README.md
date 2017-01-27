@@ -30,6 +30,10 @@ We recommend you set j (number of data threads) to high if you use DataAugmentat
 For further help you can type
 
 	python main.py -h
+	
+	
+## training results
+Under progress. The code and espetially transformations may have not be thoroughly investigated, so model convergence and quality is not garanteed yet
   
 ## Note on dataset and transform function
 
