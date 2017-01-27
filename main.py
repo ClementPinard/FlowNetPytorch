@@ -56,7 +56,7 @@ best_EPE = -1
 
 
 def main():
-    global args, best_prec1
+    global args, best_EPE
     args = parser.parse_args()
 
     # create model
@@ -93,7 +93,6 @@ def main():
         dataset, batch_size=args.batch_size,
         shuffle=True, num_workers=args.workers,
         pin_memory=True)
-
     val_loader = torch.utils.data.DataLoader(
         dataset, batch_size=args.batch_size,
         shuffle=False, num_workers=args.workers,
@@ -105,7 +104,7 @@ def main():
                                 weight_decay=args.weight_decay)
 
     if args.evaluate:
-        best_EPE = validate(val_loader, model, criterion)
+        best_EPE = validate(val_loader, model, criterion, high_res_EPE)
         return
 
     for epoch in range(args.start_epoch, args.epochs):
@@ -180,8 +179,7 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
 def validate(val_loader, model, criterion, EPE):
     batch_time = AverageMeter()
     losses = AverageMeter()
-    top1 = AverageMeter()
-    top5 = AverageMeter()
+    flow2_EPEs = AverageMeter()
 
     # switch to evaluate mode
     val_loader.dataset.eval()
