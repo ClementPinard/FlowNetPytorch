@@ -49,7 +49,7 @@ class FlyingChairs(data.Dataset):
     def __init__(self, root, transform=None, target_transform=None,
                  co_transform=None, split = 80, loader=default_loader):
 
-        self.train_set, self.test_set = make_dataset(root)
+        self.train_set, self.test_set = make_dataset(root, split)
 
         self.root = root
         self.transform = transform
