@@ -23,7 +23,7 @@ Default HyperParameters provided in `main.py` are the same as in the caffe train
 
 Example usage for FlowNetSBN :
 
-     python main.py /path/to/flying_chairs/ -b 8 -j 8 -a flownetsbn
+     python main.py /path/to/flying_chairs/ -b 8 -j 8 -a flownets_bn
 
 We recommend you set j (number of data threads) to high if you use DataAugmentation as to avoid data loading to slow the training.
 
