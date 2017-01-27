@@ -23,7 +23,7 @@ Default HyperParameters provided in `main.py` are the same as in the caffe train
 
 Example usage for FlowNetSBN :
 
-     python main.py /path/to/flying_chairs/ -b 8 -j 8 -a flownetsbn
+     python main.py /path/to/flying_chairs/ -b 8 -j 8 -a flownets_bn
 
 We recommend you set j (number of data threads) to high if you use DataAugmentation as to avoid data loading to slow the training.
 
@@ -42,7 +42,8 @@ In this repo we address the question of splitted dataset and random transformati
 ### Splitted dataset
 
 In order to allow user to specify easily what proportion of the whole dataset must be used for validation, we added a `train()` or `eval()` option to disable random transformation, and get samples from test list instead when `eval()` is called.
-TODO : we should have different sets of transformations for train or test mode, instead of just disabling it for test mode.
+
+*TODO* : we should have different sets of transformations for train or test mode, instead of just disabling it for test mode.
 
 ### Random Transformations
 
@@ -81,6 +82,7 @@ rotate: x,y,theta ->  (x*cos(theta)-x*sin(theta), y*cos(theta), x*sin(theta))
 We consider the angle `theta` small enough to linearize `cos(theta)` to 1 and `sin(theta)` to `theta` .
 
 x flow map ( `flow[:,:,0]` ) will get a shift proportional to distance from center horizontal axis `j-h/2`
+
 y flow map ( `flow[:,:,1]` ) will get a shift proportional to distance from center vertical axis `i-w/2`
 ```
 \for_all i,j flow[i,j] += theta*(j-h/2), theta*(i-w/2)
