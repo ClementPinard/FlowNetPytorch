@@ -19,7 +19,7 @@ There is not current implementation of FlowNetC as a specific Correlation layer 
 
 First, you need to download the [the flying chair dataset](http://lmb.informatik.uni-freiburg.de/resources/datasets/FlyingChairs.en.html) . It is ~64GB big and we recommend you put in a SSD Drive.
 
-Default HyperParameters provided in `main.python` are the same as in the caffe training scripts.
+Default HyperParameters provided in `main.py` are the same as in the caffe training scripts.
 
 Example usage for FlowNetSBN :
 
