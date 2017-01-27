@@ -179,7 +179,6 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
 
 def validate(val_loader, model, criterion, EPE):
     batch_time = AverageMeter()
-    losses = AverageMeter()
     flow2_EPEs = AverageMeter()
 
     # switch to evaluate mode
@@ -194,10 +193,8 @@ def validate(val_loader, model, criterion, EPE):
 
         # compute output
         output = model(input_var)
-        loss = criterion(output, target_var)
-        flow2_EPE = EPE(output[0], target_var)
-        # record loss and EPE
-        losses.update(loss.data[0], target.size(0))
+        flow2_EPE = EPE(output, target_var)
+        # record EPE
         flow2_EPEs.update(flow2_EPE.data[0], target.size(0))
 
 
@@ -208,9 +205,8 @@ def validate(val_loader, model, criterion, EPE):
         if i % args.print_freq == 0:
             print('Test: [{0}/{1}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                   'EPE {flow2_EPE.val:.3f} ({flow2_EPE.avg:.3f})'.format(
-                   i, len(val_loader), batch_time=batch_time, loss=losses,
+                   i, len(val_loader), batch_time=batch_time,
                    flow2_EPE=flow2_EPEs))
 
     print(' * EPE {flow2_EPE.avg:.3f}'
