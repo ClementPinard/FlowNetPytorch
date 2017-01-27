@@ -115,7 +115,7 @@ def main():
 
         # evaluate o validation set
 
-        EPE = validate(val_loader, model, criterion)
+        EPE = validate(val_loader, model, criterion, high_res_EPE)
         if best_EPE<0:
             best_EPE = EPE
 
