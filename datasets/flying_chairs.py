@@ -9,7 +9,6 @@ import glob
 import math
 import numpy as np
 
-
 def load_flo(path):
     with open(path, 'rb') as f:
         magic = np.fromfile(f, np.float32, count=1)
@@ -66,7 +65,6 @@ class FlyingChairs(data.Dataset):
             img1, img2, flow = self.test_set[index]
 
         inputs, target = self.loader(os.path.join(self.root,img1),os.path.join(self.root,img2),os.path.join(self.root,flow))
-        
         if self.co_transform is not None and self.training:
             inputs, target = self.co_transform(inputs, target)
         if self.transform is not None:

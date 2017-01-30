@@ -48,9 +48,10 @@ class Lambda(object):
         return self.lambd(input,target)
 
 class CenterCrop(object):
-    """Crops the given PIL.Image at the center to have a region of
+    """Crops the given inputs and target arrays at the center to have a region of
     the given size. size can be a tuple (target_height, target_width)
     or an integer, in which case the target will be of a square shape (size, size)
+    Careful, img1 and img2 may not be the same size
     """
     def __init__(self, size):
         if isinstance(size, numbers.Number):
@@ -59,18 +60,21 @@ class CenterCrop(object):
             self.size = size
 
     def __call__(self, inputs, target):
-        h, w, _ = inputs[0].shape
+        h1, w1, _ = inputs[0].shape
+        h2, w2, _ = inputs[1].shape
         th, tw = self.size
-        x1 = int(round((w - tw) / 2.))
-        y1 = int(round((h - th) / 2.))
+        x1 = int(round((w1 - tw) / 2.))
+        y1 = int(round((h1 - th) / 2.))
+        x2 = int(round((w2 - tw) / 2.))
+        y2 = int(round((h2 - th) / 2.))
 
         inputs[0] = inputs[0][y1 : y1 + th, x1 : x1 + tw]
-        inputs[1] = inputs[1][y1 : y1 + th, x1 : x1 + tw]
+        inputs[1] = inputs[1][y2 : y2 + th, x2 : x2 + tw]
         target = target[y1 : y1 + th, x1 : x1 + tw]
         return inputs,target
 
 class Scale(object):
-    """ Rescales the input PIL.Image to the given 'size'.
+    """ Rescales the inputs and target arrays to the given 'size'.
     'size' will be the size of the smaller edge.
     For example, if height > width, then image will be
     rescaled to (size * height / width, size)
@@ -79,7 +83,7 @@ class Scale(object):
     """
     def __init__(self, size, order=2):
         self.size = size
-        self.interpolation = interpolation
+        self.order = order
 
     def __call__(self, inputs, target):
         h, w, _ = inputs[0].shape
@@ -90,12 +94,12 @@ class Scale(object):
         else:
             ratio = self.size/h
 
-        inputs[0] = ndimage.interpolation.zoom(inputs[1], ratio, order=self.order)
+        inputs[0] = ndimage.interpolation.zoom(inputs[0], ratio, order=self.order)
         inputs[1] = ndimage.interpolation.zoom(inputs[1], ratio, order=self.order)
 
         target = ndimage.interpolation.zoom(target, ratio, order=self.order)
-        target*=ow/w
-        return inputs, target[:oh,:ow]
+        target*=ratio
+        return inputs, target
 
 class RandomCrop(object):
     """Crops the given PIL.Image at a random location to have a region of
@@ -160,25 +164,26 @@ class RandomRotate(object):
     def __call__(self, inputs,target):
         applied_angle  = random.uniform(-self.angle,self.angle)
         diff = random.uniform(-self.diff_angle,self.diff_angle)
-        angle1 = applied_angle + diff/2
-        angle2 = applied_angle - diff/2
+        angle1 = applied_angle - diff/2
+        angle2 = applied_angle + diff/2
         angle1_rad = angle1*np.pi/180
         angle2_rad = angle2*np.pi/180
 
         h, w, _ = target.shape
 
         def rotate_flow(i,j,k):
-            return k*(i-w/2)*(diff*np.pi/180) + (k-1)*(j-h/2)*(-diff*np.pi/180)
+            return k*(j-w/2)*(diff*np.pi/180) + (1-k)*(i-h/2)*(diff*np.pi/180)
 
         rotate_flow_map = np.fromfunction(rotate_flow, target.shape)
         target += rotate_flow_map
+
         inputs[0] = ndimage.interpolation.rotate(inputs[0], angle1, reshape=self.reshape, order=self.order)
         inputs[1] = ndimage.interpolation.rotate(inputs[1], angle2, reshape=self.reshape, order=self.order)
         target = ndimage.interpolation.rotate(target, angle1, reshape=self.reshape, order=self.order)
         #flow vectors must be rotated too!
         target_=np.array(target, copy=True)
-        target[:,:,0] = np.cos(angle1_rad)*target_[:,:,0] - np.sin(angle1_rad)*target[:,:,1]
-        target[:,:,1] = np.sin(angle1_rad)*target_[:,:,0] + np.cos(angle1_rad)*target[:,:,1]
+        target[:,:,0] = np.cos(angle1_rad)*target_[:,:,0] - np.sin(angle1_rad)*target_[:,:,1]
+        target[:,:,1] = np.sin(angle1_rad)*target_[:,:,0] + np.cos(angle1_rad)*target_[:,:,1]
         return inputs,target
 
 class RandomCropRotate(object):
@@ -196,26 +201,27 @@ class RandomCropRotate(object):
     def __call__(self, inputs,target):
         applied_angle  = random.uniform(-self.angle,self.angle)
         diff = random.uniform(-self.diff_angle,self.diff_angle)
-        angle1 = applied_angle + diff/2
-        angle2 = applied_angle - diff/2
+        angle1 = applied_angle - diff/2
+        angle2 = applied_angle + diff/2
+        
         angle1_rad = angle1*np.pi/180
         angle2_rad = angle2*np.pi/180
 
         h, w, _ = inputs[0].shape
 
         def rotate_flow(i,j,k):
-            return k*(i-w/2)*(diff*np.pi/180) + (k-1)*(j-h/2)*(-diff*np.pi/180)
+            return k*(j-w/2)*(diff*np.pi/180) + (1-k)*(i-h/2)*(diff*np.pi/180)
 
         rotate_flow_map = np.fromfunction(rotate_flow, target.shape)
         target += rotate_flow_map
 
-        inputs[0] = ndimage.interpolation.rotate(inputs[0], angle1, reshape=True)
-        inputs[1] = ndimage.interpolation.rotate(inputs[1], angle2, reshape=True)
-        target = ndimage.interpolation.rotate(target, angle1, reshape=True)
+        inputs[0] = ndimage.interpolation.rotate(inputs[0], angle1, reshape=True, order=self.order)
+        inputs[1] = ndimage.interpolation.rotate(inputs[1], angle2, reshape=True, order=self.order)
+        target = ndimage.interpolation.rotate(target, angle1, reshape=True, order=self.order)
         #flow vectors must be rotated too!
         target_=np.array(target, copy=True)
-        target[:,:,0] = np.cos(angle1_rad)*target_[:,:,0] - np.sin(angle1_rad)*target[:,:,1]
-        target[:,:,0] = np.sin(angle1_rad)*target_[:,:,0] + np.cos(angle1_rad)*target[:,:,1]
+        target[:,:,0] = np.cos(angle1_rad)*target_[:,:,0] - np.sin(angle1_rad)*target_[:,:,1]
+        target[:,:,1] = np.sin(angle1_rad)*target_[:,:,0] + np.cos(angle1_rad)*target_[:,:,1]
 
         #keep angle1 and angle2 within [0,pi/2] with a reflection at pi/2: -1rad is 1rad, 2rad is pi - 2 rad
         angle1_rad = np.pi/2 - np.abs(angle1_rad%np.pi - np.pi/2)
@@ -251,14 +257,13 @@ class RandomTranslate(object):
         if tw==0 and th==0:
             return inputs, target
         #compute x1,x2,y1,y2 for img1 and target, and x3,x4,y3,y4 for img2
-        x1,x2,x3,x4 = max(0,-tw), min(w-tw,w), max(0,tw), min(w+tw,w)
-        y1,y2,y3,y4 = max(0,-th), min(h-th,h), max(0,th), min(h+th,h)
+        x1,x2,x3,x4 = max(0,tw), min(w+tw,w), max(0,-tw), min(w-tw,w)
+        y1,y2,y3,y4 = max(0,th), min(h+th,h), max(0,-th), min(h-th,h)
 
         inputs[0] = inputs[0][y1:y2,x1:x2]
         inputs[1] = inputs[1][y3:y4,x3:x4]
-
         target= target[y1:y2,x1:x2]
         target[:,:,0]+= tw
-        target[:,:,1]+= th
+        target[:,:,1]-= th #because Y axis is down oriented
 
         return inputs, target
