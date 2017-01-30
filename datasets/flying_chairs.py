@@ -1,4 +1,5 @@
 import torch.utils.data as data
+from torch.utils.data.sampler import Sampler
 import torch
 from PIL import Image
 import os
@@ -35,7 +36,7 @@ def make_dataset(dir,split = 0):
 
     assert(len(images) > 0)
     random.shuffle(images)
-    split_index = math.floor(len(images)*(100-split)/100)
+    split_index = math.floor(len(images)*split/100)
     assert(split_index >= 0 and split_index <= len(images))
     return images[:split_index], images[split_index+1:]
 
@@ -87,3 +88,26 @@ class FlyingChairs(data.Dataset):
 
     def eval(self):
         self.training = False
+
+class RandomBalancedSampler(Sampler):
+    """Samples elements randomly, with an arbitrary size, independant from dataset length.
+    this is a balanced sampling that will sample the whole dataset with a random permutation.
+
+    Arguments:
+        data_source (Dataset): dataset to sample from
+    """
+
+    def __init__(self, data_source, epoch_size):
+        self.data_source = data_source
+        self.epoch_size = epoch_size
+        self.index = 0
+
+    def __iter__(self):
+        if self.index == 0:
+            #re-shuffle the sampler
+            self.indices = torch.randperm(len(self.data_source))
+        self.index = (self.index+1)%len(self.data_source)
+        return iter(self.indices)
+
+    def __len__(self):
+        return self.epoch_size if self.epoch_size>0 else len(self.data_source)

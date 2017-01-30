@@ -14,6 +14,7 @@ import flow_transforms
 import models
 import datasets
 from multiscaleloss import multiscaleloss
+import csv
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__"))
@@ -35,6 +36,8 @@ parser.add_argument('--epochs', default=90, type=int, metavar='N',
                     help='number of total epochs to run (default: 90')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
+parser.add_argument('--epoch-size', default=0, type=int, metavar='N',
+                    help='manual epoch size (will match dataset size if not set)')
 parser.add_argument('-b', '--batch-size', default=16, type=int,
                     metavar='N', help='mini-batch size (default: 16)')
 parser.add_argument('--lr', '--learning-rate', default=0.01, type=float,
@@ -84,19 +87,21 @@ def main():
         target_transform=None,
         co_transform=flow_transforms.Compose([
             flow_transforms.RandomTranslate(10),
-            flow_transforms.RandomCropRotate(10,360,5),
+            #flow_transforms.RandomCropRotate(10,360,5),
             flow_transforms.RandomCrop((320,448))
         ]),
         split=args.split
     )
     train_loader = torch.utils.data.DataLoader(
         dataset, batch_size=args.batch_size,
-        shuffle=True, num_workers=args.workers,
+        sampler=datasets.RandomBalancedSampler(dataset,args.epoch_size),
+        num_workers=args.workers,
         pin_memory=True)
     dataset.eval()
     val_loader = torch.utils.data.DataLoader(
         dataset, batch_size=args.batch_size,
-        shuffle=False, num_workers=args.workers,
+        shuffle=False,
+        num_workers=args.workers,
         pin_memory=True)
 
 
@@ -108,11 +113,15 @@ def main():
         best_EPE = validate(val_loader, model, criterion, high_res_EPE)
         return
 
+    with open('progress_log.csv', 'w') as csvfile:
+            spamwriter = csv.writer(csvfile, delimiter='\t')
+            spamwriter.writerow(['train_loss','train_EPE','EPE'])
+
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch)
 
         # train for one epoch
-        train(train_loader, model, criterion, high_res_EPE, optimizer, epoch)
+        train_loss, train_EPE = train(train_loader, model, criterion, high_res_EPE, optimizer, epoch)
 
         # evaluate o validation set
 
@@ -129,6 +138,11 @@ def main():
             'state_dict': model.state_dict(),
             'best_EPE': best_EPE,
         }, is_best)
+
+
+        with open('progress_log.csv', 'a') as csvfile:
+            spamwriter = csv.writer(csvfile, delimiter='\t')
+            spamwriter.writerow([train_loss,train_EPE,EPE])
 
 
 def train(train_loader, model, criterion, EPE, optimizer, epoch):
@@ -175,6 +189,7 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
                   'EPE {flow2_EPE.val:.3f} ({flow2_EPE.avg:.3f})'.format(
                    epoch, i, len(train_loader), batch_time=batch_time,
                    data_time=data_time, loss=losses, flow2_EPE=flow2_EPEs))
+    return losses.avg, flow2_EPEs.avg
 
 
 def validate(val_loader, model, criterion, EPE):
