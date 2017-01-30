@@ -1,7 +1,7 @@
 import torch.utils.data as data
 from torch.utils.data.sampler import Sampler
 import torch
-from PIL import Image
+from scipy.ndimage import imread
 import os
 import os.path
 import random
@@ -43,7 +43,7 @@ def make_dataset(dir,split = 0):
 
 def default_loader(path_img1, path_img2, path_flo):
 
-    return [Image.open(path_img1).convert('RGB'),Image.open(path_img2).convert('RGB')],load_flo(path_flo)
+    return [imread(path_img1),imread(path_img2)],load_flo(path_flo)
 
 
 class FlyingChairs(data.Dataset):
@@ -74,7 +74,6 @@ class FlyingChairs(data.Dataset):
             inputs[1] = self.transform(inputs[1])
         if self.target_transform is not None :
             target = self.target_transform(target)
-        target = torch.from_numpy(target).transpose(0, 1).transpose(0, 2).contiguous()
         return inputs, target
 
     def __len__(self):

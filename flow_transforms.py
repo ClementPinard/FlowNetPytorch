@@ -28,6 +28,15 @@ class Compose(object):
             input,target = t(input,target)
         return input,target
 
+class ArrayToTensor(object):
+    """Converts a numpy.ndarray (H x W x C) to a torch.FloatTensor of shape (C x H x W)."""
+    def __call__(self, array):
+        assert(isinstance(array, np.ndarray))
+        # handle numpy array
+        tensor = torch.from_numpy(array)
+        # put it from HWC to CHW format
+        tensor = tensor.transpose(0, 1).transpose(0, 2).contiguous()
+        return tensor.float()
 
 class Lambda(object):
     """Applies a lambda as a transform"""
@@ -50,13 +59,13 @@ class CenterCrop(object):
             self.size = size
 
     def __call__(self, inputs, target):
-        w, h = inputs[0].size
+        h, w, _ = inputs[0].shape
         th, tw = self.size
         x1 = int(round((w - tw) / 2.))
         y1 = int(round((h - th) / 2.))
 
-        inputs[0] = inputs[0].crop((x1, y1, x1 + tw, y1 + th))
-        inputs[1] = inputs[1].crop((x1, y1, x1 + tw, y1 + th))
+        inputs[0] = inputs[0][y1 : y1 + th, x1 : x1 + tw]
+        inputs[1] = inputs[1][y1 : y1 + th, x1 : x1 + tw]
         target = target[y1 : y1 + th, x1 : x1 + tw]
         return inputs,target
 
@@ -66,29 +75,25 @@ class Scale(object):
     For example, if height > width, then image will be
     rescaled to (size * height / width, size)
     size: size of the smaller edge
-    interpolation: Default: PIL.Image.BILINEAR
+    interpolation order: Default: 2 (bilinear)
     """
-    def __init__(self, size, interpolation=Image.BILINEAR):
+    def __init__(self, size, order=2):
         self.size = size
         self.interpolation = interpolation
 
     def __call__(self, inputs, target):
-        w, h = inputs[0].size
+        h, w, _ = inputs[0].shape
         if (w <= h and w == self.size) or (h <= w and h == self.size):
             return inputs,target
         if w < h:
-            ow = self.size
-            oh = int(self.size * h / w)
-            ratio = ow/w
+            ratio = self.size/w
         else:
-            oh = self.size
-            ow = int(self.size * w / h)
-            ratio = oh/h
+            ratio = self.size/h
 
-        inputs[0] = inputs[0].resize((ow, oh), self.interpolation)
-        inputs[1] = inputs[1].resize((ow, oh), self.interpolation)
-        
-        target = ndimage.interpolation.zoom(target,ratio)
+        inputs[0] = ndimage.interpolation.zoom(inputs[1], ratio, order=self.order)
+        inputs[1] = ndimage.interpolation.zoom(inputs[1], ratio, order=self.order)
+
+        target = ndimage.interpolation.zoom(target, ratio, order=self.order)
         target*=ow/w
         return inputs, target[:oh,:ow]
 
@@ -97,26 +102,22 @@ class RandomCrop(object):
     the given size. size can be a tuple (target_height, target_width)
     or an integer, in which case the target will be of a square shape (size, size)
     """
-    def __init__(self, size, padding=0):
+    def __init__(self, size):
         if isinstance(size, numbers.Number):
             self.size = (int(size), int(size))
         else:
             self.size = size
-        self.padding = padding
 
     def __call__(self, inputs,target):
-        if self.padding > 0:
-            inputs[0] = ImageOps.expand(inputs[0], border=self.padding, fill=0)
-            inputs[1] = ImageOps.expand(inputs[1], border=self.padding, fill=0)
-
-        w, h = inputs[0].size
+        h, w, _ = inputs[0].shape
         th, tw = self.size
         if w == tw and h == th:
             return inputs,target
+
         x1 = random.randint(0, w - tw)
         y1 = random.randint(0, h - th)
-        inputs[0] = inputs[0].crop((x1, y1, x1 + tw, y1 + th))
-        inputs[1] = inputs[1].crop((x1, y1, x1 + tw, y1 + th))
+        inputs[0] = inputs[0][y1 : y1 + th,x1 : x1 + tw]
+        inputs[1] = inputs[1][y1 : y1 + th,x1 : x1 + tw]
         return inputs,target[y1 : y1 + th,x1 : x1 + tw]
 
 
@@ -125,8 +126,8 @@ class RandomHorizontalFlip(object):
     """
     def __call__(self, inputs, target):
         if random.random() < 0.5:
-            input[0] = input[0].transpose(Image.FLIP_LEFT_RIGHT)
-            input[1] = input[1].transpose(Image.FLIP_LEFT_RIGHT)
+            input[0] = input[0].fliplr()
+            input[1] = input[1].fliplr()
             target = target.fliplr()
             target[:,:,0]*=-1
         return inputs,target
@@ -136,8 +137,8 @@ class RandomVerticalFlip(object):
     """
     def __call__(self, inputs, target):
         if random.random() < 0.5:
-            input[0] = input[0].transpose(Image.FLIP_UP_DOWN)
-            input[1] = input[1].transpose(Image.FLIP_UP_DOWN)
+            input[0] = input[0].flipud()
+            input[1] = input[1].flipud()
             target = target.flipud()
             target[:,:,1]*=-1
         return inputs,target
@@ -146,50 +147,49 @@ class RandomRotate(object):
     """Random rotation of the image from -angle to angle (in degrees)
     This is useful for dataAugmentation, especially for geometric problems such as FlowEstimation
     angle: max angle of the rotation
-    resample: Default: PIL.Image.BILINEAR
-    expand: Default: false. If set to true, image size will be set to keep every pixel in the image.
+    interpolation order: Default: 2 (bilinear)
+    reshape: Default: false. If set to true, image size will be set to keep every pixel in the image.
     diff_angle: Default: 0. Must stay less than 10 degrees, or linear approximation of flowmap will be off.
-    Careful when rotating more than 45 degrees, w and h will be inverted
     """
-    def __init__(self, angle, resample=Image.BILINEAR, expand=False, diff_angle=0):
+    def __init__(self, angle, diff_angle=0, order=2, reshape=False):
         self.angle = angle
-        self.resample = resample
-        self.expand = expand
+        self.reshape = reshape
+        self.order = order
         self.diff_angle = diff_angle
-        assert(angle+diff_angle < 45)
 
     def __call__(self, inputs,target):
         applied_angle  = random.uniform(-self.angle,self.angle)
         diff = random.uniform(-self.diff_angle,self.diff_angle)
         angle1 = applied_angle + diff/2
         angle2 = applied_angle - diff/2
+        angle1_rad = angle1*np.pi/180
+        angle2_rad = angle2*np.pi/180
 
-        w, h = inputs[0].size
+        h, w, _ = target.shape
 
         def rotate_flow(i,j,k):
-            if k==0:
-                return (i-w/2)*(diff*math.pi/180)
-            else:
-                return (j-h/2)*(-diff*math.pi/180)
+            return k*(i-w/2)*(diff*np.pi/180) + (k-1)*(j-h/2)*(-diff*np.pi/180)
 
         rotate_flow_map = np.fromfunction(rotate_flow, target.shape)
         target += rotate_flow_map
-        inputs[0] = inputs[0].rotate(angle1,resample=self.resample, expand=self.expand)
-        inputs[1] = inputs[1].rotate(angle2,resample=self.resample, expand=self.expand)
-        target = ndimage.interpolation.rotate(target,reshape=False)
-
+        inputs[0] = ndimage.interpolation.rotate(inputs[0], angle1, reshape=self.reshape, order=self.order)
+        inputs[1] = ndimage.interpolation.rotate(inputs[1], angle2, reshape=self.reshape, order=self.order)
+        target = ndimage.interpolation.rotate(target, angle1, reshape=self.reshape, order=self.order)
+        #flow vectors must be rotated too!
+        target_=np.array(target, copy=True)
+        target[:,:,0] = np.cos(angle1_rad)*target_[:,:,0] - np.sin(angle1_rad)*target[:,:,1]
+        target[:,:,1] = np.sin(angle1_rad)*target_[:,:,0] + np.cos(angle1_rad)*target[:,:,1]
         return inputs,target
 
 class RandomCropRotate(object):
     """Random rotation of the image from -angle to angle (in degrees)
     A crop is done to keep same image ratio, and no black pixels
-    angle: max angle of the rotation cannot be more than 180 degrees
-    resample: Default: PIL.Image.BILINEAR
+    angle: max angle of the rotation, cannot be more than 180 degrees
+    interpolation order: Default: 2 (bilinear)
     """
-    def __init__(self, angle, size, diff_angle=0, resample=Image.BILINEAR):
+    def __init__(self, angle, size, diff_angle=0, order=2):
         self.angle = angle
-        self.resample = resample
-        self.expand = True
+        self.order = order
         self.diff_angle = diff_angle
         self.size = size
 
@@ -201,7 +201,7 @@ class RandomCropRotate(object):
         angle1_rad = angle1*np.pi/180
         angle2_rad = angle2*np.pi/180
 
-        w, h = inputs[0].size
+        h, w, _ = inputs[0].shape
 
         def rotate_flow(i,j,k):
             return k*(i-w/2)*(diff*np.pi/180) + (k-1)*(j-h/2)*(-diff*np.pi/180)
@@ -209,9 +209,9 @@ class RandomCropRotate(object):
         rotate_flow_map = np.fromfunction(rotate_flow, target.shape)
         target += rotate_flow_map
 
-        inputs[0] = inputs[0].rotate(angle1,resample=self.resample, expand=True)
-        inputs[1] = inputs[1].rotate(angle2,resample=self.resample, expand=True)
-        target = ndimage.interpolation.rotate(target,angle1,reshape=True)
+        inputs[0] = ndimage.interpolation.rotate(inputs[0], angle1, reshape=True)
+        inputs[1] = ndimage.interpolation.rotate(inputs[1], angle2, reshape=True)
+        target = ndimage.interpolation.rotate(target, angle1, reshape=True)
         #flow vectors must be rotated too!
         target_=np.array(target, copy=True)
         target[:,:,0] = np.cos(angle1_rad)*target_[:,:,0] - np.sin(angle1_rad)*target[:,:,1]
@@ -244,7 +244,7 @@ class RandomTranslate(object):
         
 
     def __call__(self, inputs,target):
-        w,h = inputs[0].size
+        h, w, _ = inputs[0].shape
         th, tw = self.translation
         tw = random.randint(-tw, tw)
         th = random.randint(-th, th)
@@ -254,8 +254,8 @@ class RandomTranslate(object):
         x1,x2,x3,x4 = max(0,-tw), min(w-tw,w), max(0,tw), min(w+tw,w)
         y1,y2,y3,y4 = max(0,-th), min(h-th,h), max(0,th), min(h+th,h)
 
-        inputs[0] = inputs[0].crop((x1, y1, x2, y2))
-        inputs[1] = inputs[1].crop((x3, y3, x4, y4))
+        inputs[0] = inputs[0][y1:y2,x1:x2]
+        inputs[1] = inputs[1][y3:y4,x3:x4]
 
         target= target[y1:y2,x1:x2]
         target[:,:,0]+= tw

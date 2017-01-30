@@ -54,6 +54,10 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--pretrained', dest='pretrained', default = None,
                     help='path to pre-trained model')
+parser.add_argument('--log-summary', default = 'progress_log_summary.csv',
+                    help='csv where to save per-epoch train and test stats')
+parser.add_argument('--log-full', default = 'progress_log_full.csv',
+                    help='csv where to save per-gradient descent train stats')
 
 best_EPE = -1
 
@@ -81,13 +85,17 @@ def main():
     dataset = datasets.FlyingChairs(
         args.data,
         transform=transforms.Compose([
-            transforms.ToTensor(),
+            flow_transforms.ArrayToTensor(),
+            transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
             normalize
         ]),
-        target_transform=None,
+        target_transform=transforms.Compose([
+            flow_transforms.ArrayToTensor(),
+            transforms.Normalize(mean=[0,0],std=[20,20])
+        ]),
         co_transform=flow_transforms.Compose([
             flow_transforms.RandomTranslate(10),
-            #flow_transforms.RandomCropRotate(10,360,5),
+            flow_transforms.RandomRotate(10,5),
             flow_transforms.RandomCrop((320,448))
         ]),
         split=args.split
@@ -113,9 +121,13 @@ def main():
         best_EPE = validate(val_loader, model, criterion, high_res_EPE)
         return
 
-    with open('progress_log.csv', 'w') as csvfile:
-            spamwriter = csv.writer(csvfile, delimiter='\t')
-            spamwriter.writerow(['train_loss','train_EPE','EPE'])
+    with open(args.log_summary, 'w') as csvfile:
+        writer = csv.writer(csvfile, delimiter='\t')
+        writer.writerow(['train_loss','train_EPE','EPE'])
+    
+    with open(args.log_full, 'w') as csvfile:
+        writer = csv.writer(csvfile, delimiter='\t')
+        writer.writerow(['train_loss','train_EPE'])
 
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch)
@@ -140,9 +152,9 @@ def main():
         }, is_best)
 
 
-        with open('progress_log.csv', 'a') as csvfile:
-            spamwriter = csv.writer(csvfile, delimiter='\t')
-            spamwriter.writerow([train_loss,train_EPE,EPE])
+        with open(args.log_summary, 'a') as csvfile:
+            writer = csv.writer(csvfile, delimiter='\t')
+            writer.writerow([train_loss,train_EPE,EPE])
 
 
 def train(train_loader, model, criterion, EPE, optimizer, epoch):
@@ -156,6 +168,8 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
     model.train()
 
     end = time.time()
+    
+
     for i, (input, target) in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
@@ -167,7 +181,7 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
         # compute output
         output = model(input_var)
         loss = criterion(output, target_var)
-        flow2_EPE = EPE(output[0], target_var)
+        flow2_EPE = 20*EPE(output[0], target_var)
         # record loss and EPE
         losses.update(loss.data[0], target.size(0))
         flow2_EPEs.update(flow2_EPE.data[0], target.size(0))
@@ -180,6 +194,10 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
+
+        with open(args.log_full, 'a') as csvfile:
+            writer = csv.writer(csvfile, delimiter='\t')
+            writer.writerow([loss.data[0],flow2_EPE.data[0]])
 
         if i % args.print_freq == 0:
             print('Epoch: [{0}][{1}/{2}]\t'
@@ -208,7 +226,7 @@ def validate(val_loader, model, criterion, EPE):
 
         # compute output
         output = model(input_var)
-        flow2_EPE = EPE(output, target_var)
+        flow2_EPE = 20*EPE(output, target_var)
         # record EPE
         flow2_EPEs.update(flow2_EPE.data[0], target.size(0))
 
