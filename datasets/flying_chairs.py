@@ -101,12 +101,41 @@ class RandomBalancedSampler(Sampler):
         self.epoch_size = epoch_size
         self.index = 0
 
-    def __iter__(self):
+    def __next__(self):
         if self.index == 0:
             #re-shuffle the sampler
             self.indices = torch.randperm(len(self.data_source))
         self.index = (self.index+1)%len(self.data_source)
-        return iter(self.indices)
+        return self.indices[self.index]
+
+    def __iter__(self):
+        return self
 
     def __len__(self):
-        return self.epoch_size if self.epoch_size>0 else len(self.data_source)
+        return min(len(self.data_source),self.epoch_size) if self.epoch_size>0 else len(self.data_source)
+
+class SequentialBalancedSampler(Sampler):
+    """Samples elements dequentially, with an arbitrary size, independant from dataset length.
+    this is a balanced sampling that will sample the whole dataset before resetting it.
+
+    Arguments:
+        data_source (Dataset): dataset to sample from
+    """
+
+    def __init__(self, data_source, epoch_size):
+        self.data_source = data_source
+        self.epoch_size = epoch_size
+        self.index = 0
+
+    def __next__(self):
+        if self.index == 0:
+            #re-shuffle the sampler
+            self.indices = range(len(self.data_source))
+        self.index = (self.index+1)%len(self.data_source)
+        return self.indices[self.index]
+
+    def __iter__(self):
+        return self
+
+    def __len__(self):
+        return min(len(self.data_source),self.epoch_size) if self.epoch_size>0 else len(self.data_source)

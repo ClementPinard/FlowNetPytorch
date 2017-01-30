@@ -15,6 +15,7 @@ import models
 import datasets
 from multiscaleloss import multiscaleloss
 import csv
+import os
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__"))
@@ -30,6 +31,8 @@ parser.add_argument('--arch', '-a', metavar='ARCH', default='FlowNetS',
                     help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: flownets)')
+parser.add_argument('--solver', default = 'adam',choices=['adam','sgd'],
+                    help='solvers: adam | sgd')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=90, type=int, metavar='N',
@@ -40,10 +43,12 @@ parser.add_argument('--epoch-size', default=0, type=int, metavar='N',
                     help='manual epoch size (will match dataset size if not set)')
 parser.add_argument('-b', '--batch-size', default=16, type=int,
                     metavar='N', help='mini-batch size (default: 16)')
-parser.add_argument('--lr', '--learning-rate', default=0.01, type=float,
+parser.add_argument('--lr', '--learning-rate', default=0.0001, type=float,
                     metavar='LR', help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
-                    help='momentum')
+                    help='momentum for sgd, alpha parameter for adam')
+parser.add_argument('--beta', default=0.999, type=float, metavar='M',
+                    help='beta parameters for adam')
 parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
 parser.add_argument('--print-freq', '-p', default=10, type=int,
@@ -59,13 +64,22 @@ parser.add_argument('--log-summary', default = 'progress_log_summary.csv',
 parser.add_argument('--log-full', default = 'progress_log_full.csv',
                     help='csv where to save per-gradient descent train stats')
 
+
 best_EPE = -1
 
 
 def main():
-    global args, best_EPE
+    global args, best_EPE, save_path
     args = parser.parse_args()
-
+    save_path = '{},{},{}epochs{},b{},lr{}'.format(
+        args.arch,
+        args.solver,
+        args.epochs,
+        ',epochSize'+args.epoch_size if args.epoch_size > 0 else '',
+        args.batch_size,
+        args.lr)
+    print('=> will save everything to {}'.format(save_path))
+    os.makedirs(save_path, exist_ok=True)
     # create model
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
@@ -82,6 +96,7 @@ def main():
     # Data loading code
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
+    print("=> fetching img pairs in '{}'".format(args.data))
     dataset = datasets.FlyingChairs(
         args.data,
         transform=transforms.Compose([
@@ -100,20 +115,28 @@ def main():
         ]),
         split=args.split
     )
+    print('{} samples found, {} train samples and {} test samples '.format(len(dataset.test_set)+len(dataset.train_set),
+                                                                           len(dataset.train_set),
+                                                                           len(dataset.test_set)))
     train_loader = torch.utils.data.DataLoader(
         dataset, batch_size=args.batch_size,
         sampler=datasets.RandomBalancedSampler(dataset,args.epoch_size),
         num_workers=args.workers,
         pin_memory=True)
-    dataset.eval()
     val_loader = torch.utils.data.DataLoader(
         dataset, batch_size=args.batch_size,
-        shuffle=False,
+        sampler=datasets.SequentialBalancedSampler(dataset,args.epoch_size),
         num_workers=args.workers,
         pin_memory=True)
 
-
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
+    assert(args.solver in ['adam', 'sgd'])
+    print('=> setting {} solver'.format(args.solver))
+    if args.solver == 'adam':
+        optimizer = torch.optim.Adam(model.parameters(), args.lr,
+                                betas = (args.momentum, args.beta),
+                                weight_decay=args.weight_decay)
+    elif args.solver == 'sgd':
+        optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
 
@@ -121,11 +144,11 @@ def main():
         best_EPE = validate(val_loader, model, criterion, high_res_EPE)
         return
 
-    with open(args.log_summary, 'w') as csvfile:
+    with open(os.path.join(save_path,args.log_summary), 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter='\t')
         writer.writerow(['train_loss','train_EPE','EPE'])
     
-    with open(args.log_full, 'w') as csvfile:
+    with open(os.path.join(save_path,args.log_full), 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter='\t')
         writer.writerow(['train_loss','train_EPE'])
 
@@ -152,7 +175,7 @@ def main():
         }, is_best)
 
 
-        with open(args.log_summary, 'a') as csvfile:
+        with open(os.path.join(save_path,args.log_summary), 'a') as csvfile:
             writer = csv.writer(csvfile, delimiter='\t')
             writer.writerow([train_loss,train_EPE,EPE])
 
@@ -195,7 +218,7 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
         batch_time.update(time.time() - end)
         end = time.time()
 
-        with open(args.log_full, 'a') as csvfile:
+        with open(os.path.join(save_path,args.log_full), 'a') as csvfile:
             writer = csv.writer(csvfile, delimiter='\t')
             writer.writerow([loss.data[0],flow2_EPE.data[0]])
 
@@ -249,9 +272,9 @@ def validate(val_loader, model, criterion, EPE):
 
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
-    torch.save(state, filename)
+    torch.save(state, os.path.join(save_path,filename))
     if is_best:
-        shutil.copyfile(filename, 'model_best.pth.tar')
+        shutil.copyfile(os.path.join(save_path,filename), 'model_best.pth.tar')
 
 
 class AverageMeter(object):
