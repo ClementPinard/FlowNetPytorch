@@ -63,7 +63,6 @@ class FlyingChairs(data.Dataset):
             img1, img2, flow = self.train_set[index]
         else:
             img1, img2, flow = self.test_set[index]
-
         inputs, target = self.loader(os.path.join(self.root,img1),os.path.join(self.root,img2),os.path.join(self.root,flow))
         if self.co_transform is not None and self.training:
             inputs, target = self.co_transform(inputs, target)

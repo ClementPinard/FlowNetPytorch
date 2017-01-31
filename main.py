@@ -75,7 +75,7 @@ def main():
         args.arch,
         args.solver,
         args.epochs,
-        ',epochSize'+args.epoch_size if args.epoch_size > 0 else '',
+        ',epochSize'+str(args.epoch_size) if args.epoch_size > 0 else '',
         args.batch_size,
         args.lr)
     print('=> will save everything to {}'.format(save_path))
@@ -111,7 +111,10 @@ def main():
         co_transform=flow_transforms.Compose([
             flow_transforms.RandomTranslate(10),
             flow_transforms.RandomRotate(10,5),
-            flow_transforms.RandomCrop((320,448))
+            flow_transforms.RandomCrop((320,448)),
+            #random flips are not supported yet for tensor conversion, but will be, stay tuned!
+            #flow_transforms.RandomVerticalFlip(),
+            #flow_transforms.RandomHorizontalFlip()
         ]),
         split=args.split
     )
@@ -121,13 +124,11 @@ def main():
     train_loader = torch.utils.data.DataLoader(
         dataset, batch_size=args.batch_size,
         sampler=datasets.RandomBalancedSampler(dataset,args.epoch_size),
-        num_workers=args.workers,
-        pin_memory=True)
+        num_workers=args.workers, pin_memory=True)
     val_loader = torch.utils.data.DataLoader(
         dataset, batch_size=args.batch_size,
         sampler=datasets.SequentialBalancedSampler(dataset,args.epoch_size),
-        num_workers=args.workers,
-        pin_memory=True)
+        num_workers=args.workers, pin_memory=True)
 
     assert(args.solver in ['adam', 'sgd'])
     print('=> setting {} solver'.format(args.solver))
@@ -196,7 +197,6 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
     for i, (input, target) in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
-
         target = target.cuda(async=True)
         input_var = torch.autograd.Variable(torch.cat(input,1))
         target_var = torch.autograd.Variable(target)
@@ -230,6 +230,8 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
                   'EPE {flow2_EPE.val:.3f} ({flow2_EPE.avg:.3f})'.format(
                    epoch, i, len(train_loader), batch_time=batch_time,
                    data_time=data_time, loss=losses, flow2_EPE=flow2_EPEs))
+
+
     return losses.avg, flow2_EPEs.avg
 
 
@@ -295,9 +297,10 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
+
 def adjust_learning_rate(optimizer, epoch):
-    """Sets the learning rate to the initial LR decayed by 3 every 15 epochs"""
-    lr = args.lr * (0.3 ** (epoch // 15))
+    """Sets the learning rate to the initial LR decayed by 3 every 10 epochs"""
+    lr = args.lr * (0.3 ** (epoch // 10))
     for param_group in optimizer.state_dict()['param_groups']:
         param_group['lr'] = lr
 

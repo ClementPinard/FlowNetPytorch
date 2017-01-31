@@ -130,9 +130,9 @@ class RandomHorizontalFlip(object):
     """
     def __call__(self, inputs, target):
         if random.random() < 0.5:
-            input[0] = input[0].fliplr()
-            input[1] = input[1].fliplr()
-            target = target.fliplr()
+            inputs[0] = np.fliplr(inputs[0])
+            inputs[1] = np.fliplr(inputs[1])
+            target = np.fliplr(target)
             target[:,:,0]*=-1
         return inputs,target
 
@@ -141,9 +141,9 @@ class RandomVerticalFlip(object):
     """
     def __call__(self, inputs, target):
         if random.random() < 0.5:
-            input[0] = input[0].flipud()
-            input[1] = input[1].flipud()
-            target = target.flipud()
+            inputs[0] = np.flipud(inputs[0])
+            inputs[1] = np.flipud(inputs[1])
+            target = np.flipud(target)
             target[:,:,1]*=-1
         return inputs,target
 

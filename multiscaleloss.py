@@ -37,6 +37,7 @@ class MultiScaleLoss(nn.Module):
 def multiscaleloss(scales=5, downscale=4, weights=None, loss='L1'):
     if weights is None:
         weights = (0.005,0.01,0.02,0.08,0.32) #as in original article
+        #weights = (0.32,0.08,0.02,0.01,0.005)
     if scales ==1 and type(weights) is not tuple: #a single value needs a particular syntax to be considered as a tuple
         weights = (weights,)
     return MultiScaleLoss(scales,downscale,weights,loss)
