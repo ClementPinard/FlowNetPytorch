@@ -171,7 +171,7 @@ def main():
         save_checkpoint({
             'epoch': epoch + 1,
             'arch': args.arch,
-            'state_dict': model.state_dict(),
+            'state_dict': model.module.state_dict(),
             'best_EPE': best_EPE,
         }, is_best)
 
@@ -276,7 +276,7 @@ def validate(val_loader, model, criterion, EPE):
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     torch.save(state, os.path.join(save_path,filename))
     if is_best:
-        shutil.copyfile(os.path.join(save_path,filename), 'model_best.pth.tar')
+        shutil.copyfile(os.path.join(save_path,filename), os.path.join(save_path,'model_best.pth.tar'))
 
 
 class AverageMeter(object):

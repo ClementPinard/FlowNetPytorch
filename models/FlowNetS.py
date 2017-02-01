@@ -66,7 +66,7 @@ class FlowNetS(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, 2. / n) #this modified initialization seems to work better, but it's very hacky
+                m.weight.data.zero_()#normal_(0, 2. / n) #this modified initialization seems to work better, but it's very hacky
                 if m.bias is not None:
                     m.bias.data.zero_()
             elif isinstance(m, nn.BatchNorm2d):
@@ -120,10 +120,13 @@ def flownets(path=None):
     Args:
         path : where to load pretrained network. will create a new one if not set
     """
+    model = FlowNetS()
     if path is not None:
-        model = torch.load(path)
-    else:
-        model = FlowNetS()
+        data = torch.load(path)['state_dict']
+        if 'state_dict' in data.keys():
+            model.load_state_dict(data['state_dict'])
+        else:
+            model.load_state_dict(data)
     return model
 
 def flownets_bn(path=None):
@@ -133,8 +136,11 @@ def flownets_bn(path=None):
     Args:
         path : where to load pretrained network. will create a new one if not set
     """
+    model = FlowNetS(batchNorm=True)
     if path is not None:
-        model = torch.load(path)
-    else:
-        model = FlowNetS(batchNorm=True)
+        data = torch.load(path)['state_dict']
+        if 'state_dict' in data.keys():
+            model.load_state_dict(data['state_dict'])
+        else:
+            model.load_state_dict(data)
     return model
