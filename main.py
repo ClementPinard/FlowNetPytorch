@@ -16,6 +16,7 @@ import datasets
 from multiscaleloss import multiscaleloss
 import csv
 import os
+import datetime
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__"))
@@ -63,10 +64,11 @@ parser.add_argument('--log-summary', default = 'progress_log_summary.csv',
                     help='csv where to save per-epoch train and test stats')
 parser.add_argument('--log-full', default = 'progress_log_full.csv',
                     help='csv where to save per-gradient descent train stats')
+parser.add_argument('--no-date', action='store_true',
+                    help='don\'t append date timestamp to folder' )
 
 
 best_EPE = -1
-
 
 def main():
     global args, best_EPE, save_path
@@ -78,6 +80,9 @@ def main():
         ',epochSize'+str(args.epoch_size) if args.epoch_size > 0 else '',
         args.batch_size,
         args.lr)
+    if not args.no_date:
+        timestamp = datetime.datetime.now().strftime("%a-%b-%d-%H:%M")
+        save_path = os.path.join(timestamp,save_path)
     print('=> will save everything to {}'.format(save_path))
     os.makedirs(save_path, exist_ok=True)
     # create model
