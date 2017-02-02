@@ -4,7 +4,7 @@ import math
 
 class MultiScaleLoss(nn.Module):
 
-    def __init__(self, scales, downscale, weights=None, loss= 'Abs'):
+    def __init__(self, scales, downscale, weights=None, loss= 'L1'):
         super(MultiScaleLoss,self).__init__()
         self.downscale = downscale
         self.weights = torch.Tensor(scales).fill_(1) if weights is None else torch.Tensor(weights)
@@ -31,13 +31,11 @@ class MultiScaleLoss(nn.Module):
                 out += self.weights[i]*self.loss(input_,target_)
         else:
             out = self.loss(input,self.multiScales[0](target))
-
         return out
 
 def multiscaleloss(scales=5, downscale=4, weights=None, loss='L1'):
     if weights is None:
         weights = (0.005,0.01,0.02,0.08,0.32) #as in original article
-        #weights = (0.32,0.08,0.02,0.01,0.005)
     if scales ==1 and type(weights) is not tuple: #a single value needs a particular syntax to be considered as a tuple
         weights = (weights,)
     return MultiScaleLoss(scales,downscale,weights,loss)
