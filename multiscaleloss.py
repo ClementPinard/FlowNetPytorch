@@ -33,7 +33,27 @@ class MultiScaleLoss(nn.Module):
             out = self.loss(input,self.multiScales[0](target))
         return out
 
-def multiscaleloss(scales=5, downscale=4, weights=None, loss='L1'):
+class MultiScaleLossSparse(MultiScaleLoss):
+
+    def __init__(self, scales, downscale, weights=None, loss= 'L1'):
+        super(MultiScaleLoss,self).__init__()
+        self.multiScales = [nn.MaxPool2d(self.downscale*(2**i), self.downscale*(2**i)) for i in range(scales)]
+
+    def forward(self, input, target):
+        if type(input) is tuple:
+            out = 0
+            for i,input_ in enumerate(input):
+                target_ = self.multiScales[i](target)
+                input_[target_==0] = 0
+                out += self.weights[i]*self.loss(input_,target_)
+        else:
+            target_ = self.multiScales[0](target)
+            input[target_==0] = 0
+            out = self.loss(input,target_)
+        return out
+
+
+def multiscaleloss(scales=5, downscale=4, weights=None, loss='L1', sparse=False):
     if weights is None:
         weights = (0.005,0.01,0.02,0.08,0.32) #as in original article
     if scales ==1 and type(weights) is not tuple: #a single value needs a particular syntax to be considered as a tuple

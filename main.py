@@ -14,6 +14,7 @@ import flow_transforms
 import models
 import datasets
 from multiscaleloss import multiscaleloss
+import balancedsampler
 import csv
 import os
 import datetime
@@ -21,10 +22,17 @@ import datetime
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__"))
 
+dataset_names = sorted(name for name in datasets.__all__)
 
-parser = argparse.ArgumentParser(description='PyTorch FlowNet Training on FlyingChairs')
+
+parser = argparse.ArgumentParser(description='PyTorch FlowNet Training on several datasets')
 parser.add_argument('data', metavar='DIR',
                     help='path to dataset')
+parser.add_argument('--dataset', metavar='DATASET', default='flying_chairs',
+                    choices=dataset_names,
+                    help='dataset type : ' +
+                        ' | '.join(dataset_names) +
+                        ' (default: flying_chairs)')
 parser.add_argument('-s', '--split', default=80, type=float, metavar='%',
                     help='split percentage of train samples vs test (default: 80)')
 parser.add_argument('--arch', '-a', metavar='ARCH', default='FlowNetS',
@@ -88,6 +96,65 @@ def main():
     save_path = os.path.join(args.save,save_path)
     print('=> will save everything to {}'.format(save_path))
     os.makedirs(save_path, exist_ok=True)
+    
+    # Data loading code
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+    print("=> fetching img pairs in '{}'".format(args.data))
+    if 'KITTI' in args.dataset:
+        '''KITTI have sparse GT so we must treat them differently'''
+        train_set, test_set = datasets.__dict__[args.dataset](
+            args.data,
+            transform=transforms.Compose([
+                flow_transforms.ArrayToTensor(),
+                transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
+                normalize
+            ]),
+            target_transform=transforms.Compose([
+                flow_transforms.ArrayToTensor(),
+                transforms.Normalize(mean=[0,0],std=[20,20])
+            ]),
+            co_transform=flow_transforms.Compose([
+                flow_transforms.RandomCrop((320,896)),
+                #random flips are not supported yet for tensor conversion, but will be
+                #flow_transforms.RandomVerticalFlip(),
+                #flow_transforms.RandomHorizontalFlip()
+            ]),
+            split=args.split
+        )    
+    else:
+        train_set, test_set = datasets.__dict__[args.dataset](
+            args.data,
+            transform=transforms.Compose([
+                flow_transforms.ArrayToTensor(),
+                transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
+                normalize
+            ]),
+            target_transform=transforms.Compose([
+                flow_transforms.ArrayToTensor(),
+                transforms.Normalize(mean=[0,0],std=[20,20])
+            ]),
+            co_transform=flow_transforms.Compose([
+                flow_transforms.RandomTranslate(10),
+                flow_transforms.RandomRotate(10,5),
+                flow_transforms.RandomCrop((320,448)),
+                #random flips are not supported yet for tensor conversion, but will be
+                #flow_transforms.RandomVerticalFlip(),
+                #flow_transforms.RandomHorizontalFlip()
+            ]),
+            split=args.split
+        )
+    print('{} samples found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
+                                                                           len(train_set),
+                                                                           len(test_set)))
+    train_loader = torch.utils.data.DataLoader(
+        train_set, batch_size=args.batch_size,
+        sampler=balancedsampler.RandomBalancedSampler(train_set,args.epoch_size),
+        num_workers=args.workers, pin_memory=True)
+    val_loader = torch.utils.data.DataLoader(
+        test_set, batch_size=args.batch_size,
+        num_workers=args.workers, pin_memory=True)
+    
     # create model
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
@@ -97,45 +164,10 @@ def main():
     model = models.__dict__[args.arch](args.pretrained)
 
     model = torch.nn.DataParallel(model).cuda()
-    criterion = multiscaleloss().cuda()
-    high_res_EPE = multiscaleloss(scales=1, downscale=4, weights=(1), loss='L1').cuda()
+    criterion = multiscaleloss(sparse = 'KITTI' in args.dataset).cuda()
+    high_res_EPE = multiscaleloss(scales=1, downscale=4, weights=(1), loss='L1', sparse = 'KITTI' in args.dataset).cuda()
     cudnn.benchmark = True
 
-    # Data loading code
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
-    print("=> fetching img pairs in '{}'".format(args.data))
-    train_set, test_set = datasets.flying_chairs(
-        args.data,
-        transform=transforms.Compose([
-            flow_transforms.ArrayToTensor(),
-            transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
-            normalize
-        ]),
-        target_transform=transforms.Compose([
-            flow_transforms.ArrayToTensor(),
-            transforms.Normalize(mean=[0,0],std=[20,20])
-        ]),
-        co_transform=flow_transforms.Compose([
-            flow_transforms.RandomTranslate(10),
-            flow_transforms.RandomRotate(10,5),
-            flow_transforms.RandomCrop((320,448)),
-            #random flips are not supported yet for tensor conversion, but will be, stay tuned!
-            #flow_transforms.RandomVerticalFlip(),
-            #flow_transforms.RandomHorizontalFlip()
-        ]),
-        split=args.split
-    )
-    print('{} samples found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
-                                                                           len(train_set),
-                                                                           len(test_set)))
-    train_loader = torch.utils.data.DataLoader(
-        train_set, batch_size=args.batch_size,
-        sampler=datasets.RandomBalancedSampler(train_set,args.epoch_size),
-        num_workers=args.workers, pin_memory=True)
-    val_loader = torch.utils.data.DataLoader(
-        test_set, batch_size=args.batch_size,
-        num_workers=args.workers, pin_memory=True)
 
     assert(args.solver in ['adam', 'sgd'])
     print('=> setting {} solver'.format(args.solver))
@@ -209,6 +241,7 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
 
         # compute output
         output = model(input_var)
+
         loss = criterion(output, target_var)
         flow2_EPE = 20*EPE(output[0], target_var)
         # record loss and EPE
