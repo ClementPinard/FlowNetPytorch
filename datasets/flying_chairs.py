@@ -40,31 +40,35 @@ def make_dataset(dir,split = 0):
     return images[:split_index], images[split_index+1:]
 
 
-def default_loader(path_img1, path_img2, path_flo):
+def default_loader(root, path_imgs, path_flo):
+    imgs = [os.path.join(root,path) for path in path_imgs]
+    flo = os.path.join(root,path_flo)
+    return [imread(img) for img in imgs],load_flo(flo)
 
-    return [imread(path_img1),imread(path_img2)],load_flo(path_flo)
+def flying_chairs(root, transform=None, target_transform=None,
+                 co_transform=None, split = 80)
+    train_list, test_list = make_dataset(root,split)
+    train_dataset = ListDataset(root, train_list, transform, target_transform, co_transform)
+    test_dataset = ListDataset(root, test_list)
 
+    return train_dataset, test_dataset
 
-class FlyingChairs(data.Dataset):
-    def __init__(self, root, transform=None, target_transform=None,
-                 co_transform=None, split = 80, loader=default_loader):
-
-        self.train_set, self.test_set = make_dataset(root, split)
+class ListDataset(data.Dataset):
+    def __init__(self, root, path_list, transform=None, target_transform=None,
+                 co_transform=None, loader=default_loader):
 
         self.root = root
+        self.path_list = path_list
         self.transform = transform
         self.target_transform = target_transform
         self.co_transform = co_transform
         self.loader = loader
-        self.training= True if split > 0 else False
 
     def __getitem__(self, index):
-        if self.training:
-            img1, img2, flow = self.train_set[index]
-        else:
-            img1, img2, flow = self.test_set[index]
-        inputs, target = self.loader(os.path.join(self.root,img1),os.path.join(self.root,img2),os.path.join(self.root,flow))
-        if self.co_transform is not None and self.training:
+        inputs, target = self.path_list[index]
+
+        inputs, target = self.loader(inputs, target)
+        if self.co_transform is not None:
             inputs, target = self.co_transform(inputs, target)
         if self.transform is not None:
             inputs[0] = self.transform(inputs[0])
@@ -74,16 +78,7 @@ class FlyingChairs(data.Dataset):
         return inputs, target
 
     def __len__(self):
-        if self.training:
-            return len(self.train_set)
-        else:    
-            return len(self.test_set)
-
-    def train(self):
-        self.training = True
-
-    def eval(self):
-        self.training = False
+        return len(self.path_list)
 
 class RandomBalancedSampler(Sampler):
     """Samples elements randomly, with an arbitrary size, independant from dataset length.
@@ -94,7 +89,7 @@ class RandomBalancedSampler(Sampler):
     """
 
     def __init__(self, data_source, epoch_size):
-        self.data_source = data_source
+        self.data_size = len(data_source)
         self.epoch_size = epoch_size
         self.index = 0
 
@@ -109,7 +104,7 @@ class RandomBalancedSampler(Sampler):
         return self
 
     def __len__(self):
-        return min(len(self.data_source),self.epoch_size) if self.epoch_size>0 else len(self.data_source)
+        return min(self.data_size),self.epoch_size if self.epoch_size>0 else self.data_size
 
 class SequentialBalancedSampler(Sampler):
     """Samples elements dequentially, with an arbitrary size, independant from dataset length.
@@ -120,19 +115,16 @@ class SequentialBalancedSampler(Sampler):
     """
 
     def __init__(self, data_source, epoch_size):
-        self.data_source = data_source
+        self.data_size = len(data_source)
         self.epoch_size = epoch_size
         self.index = 0
 
     def __next__(self):
-        if self.index == 0:
-            #re-shuffle the sampler
-            self.indices = range(len(self.data_source))
         self.index = (self.index+1)%len(self.data_source)
-        return self.indices[self.index]
+        return self.index
 
     def __iter__(self):
         return self
 
     def __len__(self):
-        return min(len(self.data_source),self.epoch_size) if self.epoch_size>0 else len(self.data_source)
+        return min(self.data_size,self.epoch_size) if self.epoch_size>0 else self.data_size

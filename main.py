@@ -102,7 +102,7 @@ def main():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     print("=> fetching img pairs in '{}'".format(args.data))
-    dataset = datasets.FlyingChairs(
+    train_set, test_set = datasets.flyingchairs(
         args.data,
         transform=transforms.Compose([
             flow_transforms.ArrayToTensor(),
@@ -123,16 +123,15 @@ def main():
         ]),
         split=args.split
     )
-    print('{} samples found, {} train samples and {} test samples '.format(len(dataset.test_set)+len(dataset.train_set),
-                                                                           len(dataset.train_set),
-                                                                           len(dataset.test_set)))
+    print('{} samples found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
+                                                                           len(train_set),
+                                                                           len(test_set)))
     train_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=args.batch_size,
+        train_set, batch_size=args.batch_size,
         sampler=datasets.RandomBalancedSampler(dataset,args.epoch_size),
         num_workers=args.workers, pin_memory=True)
     val_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=args.batch_size,
-        sampler=datasets.SequentialBalancedSampler(dataset,args.epoch_size),
+        test_set, batch_size=args.batch_size,
         num_workers=args.workers, pin_memory=True)
 
     assert(args.solver in ['adam', 'sgd'])
@@ -193,7 +192,6 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
     flow2_EPEs = AverageMeter()
 
     # switch to train mode
-    train_loader.dataset.train()
     model.train()
 
     end = time.time()
@@ -245,7 +243,6 @@ def validate(val_loader, model, criterion, EPE):
     flow2_EPEs = AverageMeter()
 
     # switch to evaluate mode
-    val_loader.dataset.eval()
     model.eval()
 
     end = time.time()
