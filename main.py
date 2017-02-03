@@ -68,8 +68,6 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--pretrained', dest='pretrained', default = None,
                     help='path to pre-trained model')
-parser.add_argument('--save', default = 'checkpoints',
-                    help='folder where to save logs and models')
 parser.add_argument('--log-summary', default = 'progress_log_summary.csv',
                     help='csv where to save per-epoch train and test stats')
 parser.add_argument('--log-full', default = 'progress_log_full.csv',
@@ -93,7 +91,7 @@ def main():
     if not args.no_date:
         timestamp = datetime.datetime.now().strftime("%a-%b-%d-%H:%M")
         save_path = os.path.join(timestamp,save_path)
-    save_path = os.path.join(args.save,save_path)
+    save_path = os.path.join(args.dataset,save_path)
     print('=> will save everything to {}'.format(save_path))
     os.makedirs(save_path, exist_ok=True)
     
