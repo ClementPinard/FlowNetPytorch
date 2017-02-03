@@ -122,7 +122,7 @@ def flownets(path=None):
     """
     model = FlowNetS()
     if path is not None:
-        data = torch.load(path)['state_dict']
+        data = torch.load(path)
         if 'state_dict' in data.keys():
             model.load_state_dict(data['state_dict'])
         else:
@@ -138,7 +138,7 @@ def flownets_bn(path=None):
     """
     model = FlowNetS(batchNorm=True)
     if path is not None:
-        data = torch.load(path)['state_dict']
+        data = torch.load(path)
         if 'state_dict' in data.keys():
             model.load_state_dict(data['state_dict'])
         else:
