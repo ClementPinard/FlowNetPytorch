@@ -31,7 +31,7 @@ def make_dataset(dir,split = 0):
         if not (os.path.isfile(os.path.join(dir,img1)) or os.path.isfile(os.path.join(dir,img2))):
             continue
 
-        images.append([img1,img2,flow_map])
+        images.append([[img1,img2],flow_map])
 
     assert(len(images) > 0)
     random.shuffle(images)
@@ -46,10 +46,10 @@ def default_loader(root, path_imgs, path_flo):
     return [imread(img) for img in imgs],load_flo(flo)
 
 def flying_chairs(root, transform=None, target_transform=None,
-                 co_transform=None, split = 80)
+                 co_transform=None, split = 80):
     train_list, test_list = make_dataset(root,split)
     train_dataset = ListDataset(root, train_list, transform, target_transform, co_transform)
-    test_dataset = ListDataset(root, test_list)
+    test_dataset = ListDataset(root, test_list, transform, target_transform)
 
     return train_dataset, test_dataset
 
@@ -67,7 +67,7 @@ class ListDataset(data.Dataset):
     def __getitem__(self, index):
         inputs, target = self.path_list[index]
 
-        inputs, target = self.loader(inputs, target)
+        inputs, target = self.loader(self.root, inputs, target)
         if self.co_transform is not None:
             inputs, target = self.co_transform(inputs, target)
         if self.transform is not None:
@@ -96,15 +96,15 @@ class RandomBalancedSampler(Sampler):
     def __next__(self):
         if self.index == 0:
             #re-shuffle the sampler
-            self.indices = torch.randperm(len(self.data_source))
-        self.index = (self.index+1)%len(self.data_source)
+            self.indices = torch.randperm(self.data_size)
+        self.index = (self.index+1)%self.data_size
         return self.indices[self.index]
 
     def __iter__(self):
         return self
 
     def __len__(self):
-        return min(self.data_size),self.epoch_size if self.epoch_size>0 else self.data_size
+        return min(self.data_size,self.epoch_size) if self.epoch_size>0 else self.data_size
 
 class SequentialBalancedSampler(Sampler):
     """Samples elements dequentially, with an arbitrary size, independant from dataset length.
@@ -120,7 +120,7 @@ class SequentialBalancedSampler(Sampler):
         self.index = 0
 
     def __next__(self):
-        self.index = (self.index+1)%len(self.data_source)
+        self.index = (self.index+1)%self.data_size
         return self.index
 
     def __iter__(self):

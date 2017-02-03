@@ -1,3 +1,3 @@
-from .flying_chairs import FlyingChairs, RandomBalancedSampler, SequentialBalancedSampler
+from .flying_chairs import flying_chairs, RandomBalancedSampler, SequentialBalancedSampler
 
-__all__ = ('flyingchairs','RandomBalancedSampler', 'SequentialBalancedSampler')
+__all__ = ('flying_chairs','RandomBalancedSampler', 'SequentialBalancedSampler')

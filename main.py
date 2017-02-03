@@ -102,7 +102,7 @@ def main():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     print("=> fetching img pairs in '{}'".format(args.data))
-    train_set, test_set = datasets.flyingchairs(
+    train_set, test_set = datasets.flying_chairs(
         args.data,
         transform=transforms.Compose([
             flow_transforms.ArrayToTensor(),
@@ -128,7 +128,7 @@ def main():
                                                                            len(test_set)))
     train_loader = torch.utils.data.DataLoader(
         train_set, batch_size=args.batch_size,
-        sampler=datasets.RandomBalancedSampler(dataset,args.epoch_size),
+        sampler=datasets.RandomBalancedSampler(train_set,args.epoch_size),
         num_workers=args.workers, pin_memory=True)
     val_loader = torch.utils.data.DataLoader(
         test_set, batch_size=args.batch_size,
