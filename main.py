@@ -58,8 +58,8 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum for sgd, alpha parameter for adam')
 parser.add_argument('--beta', default=0.999, type=float, metavar='M',
                     help='beta parameters for adam')
-parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
-                    metavar='W', help='weight decay (default: 1e-4)')
+parser.add_argument('--weight-decay', '--wd', default=4e-4, type=float,
+                    metavar='W', help='weight decay (default: 4e-4)')
 parser.add_argument('--print-freq', '-p', default=10, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
@@ -335,10 +335,11 @@ class AverageMeter(object):
 
 
 def adjust_learning_rate(optimizer, epoch):
-    """Sets the learning rate to the initial LR decayed by 3 every 10 epochs"""
-    lr = args.lr * (0.3 ** (epoch // 10))
-    for param_group in optimizer.state_dict()['param_groups']:
-        param_group['lr'] = lr
+    """Sets the learning rate to the initial LR decayed by 2 after 300K iterations, 400K and 500K"""
+    if epoch == 100 or epoch == 150 or epoch == 200:
+        lr = args.lr * (0.5 ** (epoch // 10))
+        for param_group in optimizer.state_dict()['param_groups']:
+            param_group['lr'] = lr
 
 if __name__ == '__main__':
     main()
