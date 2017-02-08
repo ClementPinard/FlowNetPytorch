@@ -161,7 +161,7 @@ def main():
 
     model = models.__dict__[args.arch](args.pretrained).cuda()
 
-    #model = torch.nn.DataParallel(model).cuda()
+    model = torch.nn.DataParallel(model).cuda()
     criterion = multiscaleloss(sparse = 'KITTI' in args.dataset).cuda()
     high_res_EPE = multiscaleloss(scales=1, downscale=4, weights=(1), loss='L1', sparse = 'KITTI' in args.dataset).cuda()
     cudnn.benchmark = True
