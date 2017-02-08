@@ -133,8 +133,8 @@ def main():
                 transforms.Normalize(mean=[0,0],std=[20,20])
             ]),
             co_transform=flow_transforms.Compose([
-                flow_transforms.RandomTranslate(10),
-                flow_transforms.RandomRotate(10,5),
+                flow_transforms.RandomTranslate(1),
+                flow_transforms.RandomRotate(5,0.5),
                 flow_transforms.RandomCrop((320,448)),
                 #random flips are not supported yet for tensor conversion, but will be
                 #flow_transforms.RandomVerticalFlip(),
@@ -159,9 +159,9 @@ def main():
     else:
         print("=> creating model '{}'".format(args.arch))
 
-    model = models.__dict__[args.arch](args.pretrained)
+    model = models.__dict__[args.arch](args.pretrained).cuda()
 
-    model = torch.nn.DataParallel(model).cuda()
+    #model = torch.nn.DataParallel(model).cuda()
     criterion = multiscaleloss(sparse = 'KITTI' in args.dataset).cuda()
     high_res_EPE = multiscaleloss(scales=1, downscale=4, weights=(1), loss='L1', sparse = 'KITTI' in args.dataset).cuda()
     cudnn.benchmark = True
@@ -234,6 +234,7 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
         # measure data loading time
         data_time.update(time.time() - end)
         target = target.cuda(async=True)
+        input = [i.cuda(0) for i in input]
         input_var = torch.autograd.Variable(torch.cat(input,1))
         target_var = torch.autograd.Variable(target)
 
@@ -252,6 +253,7 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
         optimizer.step()
 
         # measure elapsed time
+        torch.cuda.synchronize()
         batch_time.update(time.time() - end)
         end = time.time()
 
@@ -282,7 +284,7 @@ def validate(val_loader, model, criterion, EPE):
     end = time.time()
     for i, (input, target) in enumerate(val_loader):
         target = target.cuda(async=True)
-        input_var = torch.autograd.Variable(torch.cat(input,1), volatile=True)
+        input_var = torch.autograd.Variable(torch.cat(input,1).cuda(), volatile=True)
         target_var = torch.autograd.Variable(target, volatile=True)
 
         # compute output

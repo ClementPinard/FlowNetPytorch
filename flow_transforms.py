@@ -252,8 +252,8 @@ class RandomTranslate(object):
     def __call__(self, inputs,target):
         h, w, _ = inputs[0].shape
         th, tw = self.translation
-        tw = random.randint(-tw/2, tw/2)
-        th = random.randint(-th/2, th/2)
+        tw = random.randint(-tw, tw)
+        th = random.randint(-th, th)
         if tw==0 and th==0:
             return inputs, target
         #compute x1,x2,y1,y2 for img1 and target, and x3,x4,y3,y4 for img2
