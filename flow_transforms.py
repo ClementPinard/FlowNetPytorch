@@ -180,10 +180,10 @@ class RandomRotate(object):
         inputs[0] = ndimage.interpolation.rotate(inputs[0], angle1, reshape=self.reshape, order=self.order)
         inputs[1] = ndimage.interpolation.rotate(inputs[1], angle2, reshape=self.reshape, order=self.order)
         target = ndimage.interpolation.rotate(target, angle1, reshape=self.reshape, order=self.order)
-        #flow vectors must be rotated too!
+        #flow vectors must be rotated too! careful about Y flow which is upside down
         target_=np.array(target, copy=True)
-        target[:,:,0] = np.cos(angle1_rad)*target_[:,:,0] - np.sin(angle1_rad)*target_[:,:,1]
-        target[:,:,1] = np.sin(angle1_rad)*target_[:,:,0] + np.cos(angle1_rad)*target_[:,:,1]
+        target[:,:,0] = np.cos(angle1_rad)*target_[:,:,0] + np.sin(angle1_rad)*target_[:,:,1]
+        target[:,:,1] = -np.sin(angle1_rad)*target_[:,:,0] + np.cos(angle1_rad)*target_[:,:,1]
         return inputs,target
 
 class RandomCropRotate(object):
