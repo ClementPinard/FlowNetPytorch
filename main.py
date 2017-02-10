@@ -74,7 +74,7 @@ parser.add_argument('--log-full', default = 'progress_log_full.csv',
                     help='csv where to save per-gradient descent train stats')
 parser.add_argument('--no-date', action='store_true',
                     help='don\'t append date timestamp to folder' )
-
+parser.add_argument('--loss', default='L1', help='loss function to apply to multiScaleCriterion : L1 (default)| SmoothL1| MSE')
 
 best_EPE = -1
 
@@ -162,7 +162,7 @@ def main():
     model = models.__dict__[args.arch](args.pretrained).cuda()
 
     model = torch.nn.DataParallel(model).cuda()
-    criterion = multiscaleloss(sparse = 'KITTI' in args.dataset).cuda()
+    criterion = multiscaleloss(sparse = 'KITTI' in args.dataset, loss=args.loss).cuda()
     high_res_EPE = multiscaleloss(scales=1, downscale=4, weights=(1), loss='L1', sparse = 'KITTI' in args.dataset).cuda()
     cudnn.benchmark = True
 
@@ -340,7 +340,7 @@ def adjust_learning_rate(optimizer, epoch):
     """Sets the learning rate to the initial LR decayed by 2 after 300K iterations, 400K and 500K"""
     if epoch == 100 or epoch == 150 or epoch == 200:
         lr = args.lr * (0.5 ** (epoch // 10))
-        for param_group in optimizer.state_dict()['param_groups']:
+        for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
 if __name__ == '__main__':
