@@ -75,6 +75,8 @@ parser.add_argument('--log-full', default = 'progress_log_full.csv',
 parser.add_argument('--no-date', action='store_true',
                     help='don\'t append date timestamp to folder' )
 parser.add_argument('--loss', default='L1', help='loss function to apply to multiScaleCriterion : L1 (default)| SmoothL1| MSE')
+parser.add_argument('--div-flow', default = 20,
+                    help='value by which flow will be divided. Original value is 20 but 1 with batchNorm gives good results')
 
 best_EPE = -1
 
@@ -98,50 +100,42 @@ def main():
     # Data loading code
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
-    print("=> fetching img pairs in '{}'".format(args.data))
+    input_transform = transforms.Compose([
+                flow_transforms.ArrayToTensor(),
+                transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
+                normalize
+        ])
+    target_transform = transforms.Compose([
+                flow_transforms.ArrayToTensor(),
+                transforms.Normalize(mean=[0,0],std=[args.div_flow,args.div_flow])
+        ])
+
     if 'KITTI' in args.dataset:
-        '''KITTI have sparse GT so we must treat them differently'''
-        train_set, test_set = datasets.__dict__[args.dataset](
-            args.data,
-            transform=transforms.Compose([
-                flow_transforms.ArrayToTensor(),
-                transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
-                normalize
-            ]),
-            target_transform=transforms.Compose([
-                flow_transforms.ArrayToTensor(),
-                transforms.Normalize(mean=[0,0],std=[20,20])
-            ]),
-            co_transform=flow_transforms.Compose([
-                flow_transforms.RandomCrop((320,896)),
-                #random flips are not supported yet for tensor conversion, but will be
-                #flow_transforms.RandomVerticalFlip(),
-                #flow_transforms.RandomHorizontalFlip()
-            ]),
-            split=args.split
-        )    
+        co_transform=flow_transforms.Compose([
+            flow_transforms.RandomCrop((320,448)),
+            #random flips are not supported yet for tensor conversion, but will be
+            #flow_transforms.RandomVerticalFlip(),
+            #flow_transforms.RandomHorizontalFlip()
+        ])
     else:
-        train_set, test_set = datasets.__dict__[args.dataset](
-            args.data,
-            transform=transforms.Compose([
-                flow_transforms.ArrayToTensor(),
-                transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
-                normalize
-            ]),
-            target_transform=transforms.Compose([
-                flow_transforms.ArrayToTensor(),
-                transforms.Normalize(mean=[0,0],std=[20,20])
-            ]),
-            co_transform=flow_transforms.Compose([
-                flow_transforms.RandomTranslate(1),
-                flow_transforms.RandomRotate(5,0.5),
-                flow_transforms.RandomCrop((320,448)),
-                #random flips are not supported yet for tensor conversion, but will be
-                #flow_transforms.RandomVerticalFlip(),
-                #flow_transforms.RandomHorizontalFlip()
-            ]),
-            split=args.split
-        )
+        co_transform=flow_transforms.Compose([
+            flow_transforms.RandomTranslate(10),
+            flow_transforms.RandomRotate(0,0),
+            flow_transforms.RandomCrop((320,448)),
+            #random flips are not supported yet for tensor conversion, but will be
+            #flow_transforms.RandomVerticalFlip(),
+            #flow_transforms.RandomHorizontalFlip()
+        ])
+
+
+    print("=> fetching img pairs in '{}'".format(args.data))
+    train_set, test_set = datasets.__dict__[args.dataset](
+        args.data,
+        transform=input_transform,
+        target_transform=target_transform,
+        co_transform=co_transform,
+        split=args.split
+    )
     print('{} samples found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
                                                                            len(train_set),
                                                                            len(test_set)))
@@ -242,7 +236,7 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
         output = model(input_var)
 
         loss = criterion(output, target_var)
-        flow2_EPE = 20*EPE(output[0], target_var)
+        flow2_EPE = args.div_flow*EPE(output[0], target_var)
         # record loss and EPE
         losses.update(loss.data[0], target.size(0))
         flow2_EPEs.update(flow2_EPE.data[0], target.size(0))
@@ -253,7 +247,6 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
         optimizer.step()
 
         # measure elapsed time
-        torch.cuda.synchronize()
         batch_time.update(time.time() - end)
         end = time.time()
 
@@ -289,7 +282,7 @@ def validate(val_loader, model, criterion, EPE):
 
         # compute output
         output = model(input_var)
-        flow2_EPE = 20*EPE(output, target_var)
+        flow2_EPE = args.div_flow*EPE(output, target_var)
         # record EPE
         flow2_EPEs.update(flow2_EPE.data[0], target.size(0))
 
