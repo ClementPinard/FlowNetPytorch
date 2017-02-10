@@ -2,6 +2,10 @@ import torch
 import torch.nn as nn
 import math
 
+def EPE(input_flow, target_flow):
+    diff_map = torch.pow(target_flow-input_flow,2)
+    return torch.pow(diff_map[:,0] + diff_map[:,1], 0.5)
+
 class MultiScaleLoss(nn.Module):
 
     def __init__(self, scales, downscale, weights=None, loss= 'L1'):
@@ -28,7 +32,8 @@ class MultiScaleLoss(nn.Module):
             out = 0
             for i,input_ in enumerate(input):
                 target_ = self.multiScales[i](target)
-                out += self.weights[i]*self.loss(input_,target_)
+                EPE_ = EPE(input_,target_)
+                out += self.weights[i]*self.loss(EPE_,EPE_.detach()*0) #Compare EPE_ with A Variable of the same size, filled with zeros)
         else:
             out = self.loss(input,self.multiScales[0](target))
         return out
@@ -45,7 +50,8 @@ class MultiScaleLossSparse(MultiScaleLoss):
             for i,input_ in enumerate(input):
                 target_ = self.multiScales[i](target)
                 input_[target_==0] = 0
-                out += self.weights[i]*self.loss(input_,target_)
+                EPE_ = EPE(input_,target_)
+                out += self.weights[i]*self.loss(EPE_,torch.zeros(EPE_.size()))
         else:
             target_ = self.multiScales[0](target)
             input[target_==0] = 0
