@@ -120,7 +120,7 @@ def main():
     else:
         co_transform=flow_transforms.Compose([
             flow_transforms.RandomTranslate(10),
-            flow_transforms.RandomRotate(10,5)
+            flow_transforms.RandomRotate(10,5),
             flow_transforms.RandomCrop((320,448)),
             #random flips are not supported yet for tensor conversion, but will be
             #flow_transforms.RandomVerticalFlip(),
