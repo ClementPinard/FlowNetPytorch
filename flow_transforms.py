@@ -172,7 +172,7 @@ class RandomRotate(object):
         h, w, _ = target.shape
 
         def rotate_flow(i,j,k):
-            return k*(j-w/2)*(diff*np.pi/180) + (1-k)*(i-h/2)*(diff*np.pi/180)
+            return -k*(j-w/2)*(diff*np.pi/180) + (1-k)*(i-h/2)*(diff*np.pi/180)
 
         rotate_flow_map = np.fromfunction(rotate_flow, target.shape)
         target += rotate_flow_map
@@ -210,7 +210,7 @@ class RandomCropRotate(object):
         h, w, _ = inputs[0].shape
 
         def rotate_flow(i,j,k):
-            return k*(j-w/2)*(diff*np.pi/180) + (1-k)*(i-h/2)*(diff*np.pi/180)
+            return -k*(j-w/2)*(diff*np.pi/180) + (1-k)*(i-h/2)*(diff*np.pi/180)
 
         rotate_flow_map = np.fromfunction(rotate_flow, target.shape)
         target += rotate_flow_map
@@ -264,6 +264,6 @@ class RandomTranslate(object):
         inputs[1] = inputs[1][y3:y4,x3:x4]
         target= target[y1:y2,x1:x2]
         target[:,:,0]+= tw
-        target[:,:,1]-= th #because Y axis is down oriented
+        target[:,:,1]+= th
 
         return inputs, target
