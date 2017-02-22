@@ -332,9 +332,8 @@ class AverageMeter(object):
 def adjust_learning_rate(optimizer, epoch):
     """Sets the learning rate to the initial LR decayed by 2 after 300K iterations, 400K and 500K"""
     if epoch == 100 or epoch == 150 or epoch == 200:
-        lr = args.lr * (0.5 ** (epoch // 10))
         for param_group in optimizer.param_groups:
-            param_group['lr'] = lr
+            param_group['lr'] = param_group['lr']/2
 
 if __name__ == '__main__':
     main()

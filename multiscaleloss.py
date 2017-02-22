@@ -3,8 +3,7 @@ import torch.nn as nn
 import math
 
 def EPE(input_flow, target_flow):
-    diff_map = torch.pow(target_flow-input_flow,2)
-    return torch.pow(diff_map[:,0] + diff_map[:,1], 0.5)
+    return torch.norm(target_flow-input_flow,2,2)
 
 class MultiScaleLoss(nn.Module):
 

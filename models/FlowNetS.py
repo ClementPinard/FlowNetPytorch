@@ -120,7 +120,7 @@ def flownets(path=None):
     Args:
         path : where to load pretrained network. will create a new one if not set
     """
-    model = FlowNetS()
+    model = FlowNetS(batchNorm=False)
     if path is not None:
         data = torch.load(path)
         if 'state_dict' in data.keys():
