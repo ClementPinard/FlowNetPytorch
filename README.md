@@ -17,6 +17,8 @@ There is not current implementation of FlowNetC as a specific Correlation layer 
 
 ## Pretrained Models
 Thanks to [Kaixhin](https://github.com/Kaixhin) you can download a pretrained version of FlowNetS (from caffe, not from pytorch) [here](https://drive.google.com/open?id=0B5EC7HMbyk3CbjFPb0RuODI3NmM) . This folder also contains Pretrained models for Torch (version torch [here](https://github.com/ClementPinard/FlowNetTorch)
+### Note on networks from caffe
+These networks expect a BGR input in range [0,1]. BGR order is not very important as original caffe code used color warps as data augmentation, but you will have to get rid of [the normalization step](https://github.com/ClementPinard/FlowNetPytorch/blob/master/main.py#L106)
 
 ## Training on Flying Chair Dataset
 
