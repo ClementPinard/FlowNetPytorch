@@ -15,7 +15,7 @@ As Graph versions are no longer needed for Pytorch, the two neural network model
 
 There is not current implementation of FlowNetC as a specific Correlation layer module would need to be written (feel free to contribute !)
 
-##Training on Flying Chair Dataset
+## Training on Flying Chair Dataset
 
 First, you need to download the [the flying chair dataset](http://lmb.informatik.uni-freiburg.de/resources/datasets/FlyingChairs.en.html) . It is ~64GB big and we recommend you put in a SSD Drive.
 
@@ -32,7 +32,7 @@ For further help you can type
 	python main.py -h
 	
 	
-## training results
+## Training results
 Under progress. The code and espetially transformations may have not be thoroughly investigated, so model convergence and quality is not garanteed yet
   
 ## Note on dataset and transform function
