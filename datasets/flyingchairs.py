@@ -21,7 +21,7 @@ def make_dataset(dir,split = 0):
     random.shuffle(images)
     split_index = math.floor(len(images)*split/100)
     assert(split_index >= 0 and split_index <= len(images))
-    return (images[:split_index], images[split_index+1:]) if split_index < len(images) else (images, [])
+    return (images[:split_index], images[split_index:]) if split_index < len(images) else (images, [])
 
 
 
