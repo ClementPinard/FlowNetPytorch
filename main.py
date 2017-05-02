@@ -35,7 +35,7 @@ parser.add_argument('--dataset', metavar='DATASET', default='flying_chairs',
                         ' (default: flying_chairs)')
 parser.add_argument('-s', '--split', default=80, type=float, metavar='%',
                     help='split percentage of train samples vs test (default: 80)')
-parser.add_argument('--arch', '-a', metavar='ARCH', default='FlowNetS',
+parser.add_argument('--arch', '-a', metavar='ARCH', default='flownets',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names) +
@@ -95,7 +95,8 @@ def main():
         save_path = os.path.join(timestamp,save_path)
     save_path = os.path.join(args.dataset,save_path)
     print('=> will save everything to {}'.format(save_path))
-    os.makedirs(save_path, exist_ok=True)
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
     
     # Data loading code
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
