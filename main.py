@@ -95,10 +95,8 @@ def main():
         save_path = os.path.join(timestamp,save_path)
     save_path = os.path.join(args.dataset,save_path)
     print('=> will save everything to {}'.format(save_path))
-    try:
+    if not os.path.exists(save_path):
         os.makedirs(save_path)
-    except os.error: # if directory exists
-        pass
     
     # Data loading code
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
