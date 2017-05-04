@@ -1,4 +1,5 @@
 from torch.utils.data.sampler import Sampler
+from future.utils import implements_iterator # for python2.7 compatibility
 import torch
 
 class RandomBalancedSampler(Sampler):
