@@ -229,7 +229,7 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
         # measure data loading time
         data_time.update(time.time() - end)
         target = target.cuda(async=True)
-        input = [i.cuda(0) for i in input]
+        input = [j.cuda(0) for j in input]
         input_var = torch.autograd.Variable(torch.cat(input,1))
         target_var = torch.autograd.Variable(target)
 

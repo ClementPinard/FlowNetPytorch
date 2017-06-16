@@ -1,5 +1,4 @@
 from torch.utils.data.sampler import Sampler
-from future.utils import implements_iterator # for python2.7 compatibility
 import torch
 
 class RandomBalancedSampler(Sampler):
@@ -21,6 +20,9 @@ class RandomBalancedSampler(Sampler):
             self.indices = torch.randperm(self.data_size)
         self.index = (self.index+1)%self.data_size
         return self.indices[self.index]
+
+    def next(self):
+        return self.__next__()
 
     def __iter__(self):
         return self
@@ -44,6 +46,9 @@ class SequentialBalancedSampler(Sampler):
     def __next__(self):
         self.index = (self.index+1)%self.data_size
         return self.index
+
+    def next(self):
+        return self.__next__()
 
     def __iter__(self):
         return self
