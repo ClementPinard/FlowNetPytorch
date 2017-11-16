@@ -66,7 +66,7 @@ class FlowNetS(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, 0.02 / n) #this modified initialization seems to work better, but it's very hacky
+                m.weight.data.normal_(0, math.sqrt(2/n))
                 if m.bias is not None:
                     m.bias.data.zero_()
             elif isinstance(m, nn.BatchNorm2d):
