@@ -18,7 +18,7 @@ There is not current implementation of FlowNetC as a specific Correlation layer 
 ## Pretrained Models
 Thanks to [Kaixhin](https://github.com/Kaixhin) you can download a pretrained version of FlowNetS (from caffe, not from pytorch) [here](https://drive.google.com/open?id=0B5EC7HMbyk3CbjFPb0RuODI3NmM) . This folder also contains Pretrained models for Torch (version torch [here](https://github.com/ClementPinard/FlowNetTorch)
 ### Note on networks from caffe
-These networks expect a BGR input in range [0,1]. BGR order is not very important as original caffe code used color warps as data augmentation, but you will have to get rid of [the normalization step](https://github.com/ClementPinard/FlowNetPytorch/blob/master/main.py#L106)
+These networks expect a BGR input in range [0,1]. However, BGR order is not very important as original caffe code used color warps as data augmentation.
 
 ## Training on Flying Chair Dataset
 
@@ -35,7 +35,11 @@ We recommend you set j (number of data threads) to high if you use DataAugmentat
 For further help you can type
 
 	python main.py -h
-	
+
+## Visualizing training
+[Tensorboard-pytorch](https://github.com/lanpa/tensorboard-pytorch) is used for logging. To visualize result, simply type
+
+	tensorboard --logdir=/path/to/checkoints
 	
 ## Training results
 Under progress. The code and espetially transformations may have not be thoroughly investigated, so model convergence and quality is not garanteed yet
@@ -43,12 +47,6 @@ Under progress. The code and espetially transformations may have not be thorough
 ## Note on dataset and transform function
 
 In this repo we address the question of splitted dataset and random transformations for both input and target, which are not currently formalized in official repo. It may change greatly in the future as Pytorch gets updated.
-
-### Splitted dataset
-
-In order to allow user to specify easily what proportion of the whole dataset must be used for validation, we added a `train()` or `eval()` option to disable random transformation, and get samples from test list instead when `eval()` is called.
-
-*TODO* : we should have different sets of transformations for train or test mode, instead of just disabling it for test mode.
 
 ### Random Transformations
 

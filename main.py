@@ -13,11 +13,11 @@ import torchvision.transforms as transforms
 import flow_transforms
 import models
 import datasets
-from multiscaleloss import multiscaleloss
-import balancedsampler
-import csv
+from multiscaleloss import multiscaleEPE, realEPE
 import os
 import datetime
+from tensorboardX import SummaryWriter
+import numpy as np
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__"))
@@ -25,33 +25,32 @@ model_names = sorted(name for name in models.__dict__
 dataset_names = sorted(name for name in datasets.__all__)
 
 
-parser = argparse.ArgumentParser(description='PyTorch FlowNet Training on several datasets')
+parser = argparse.ArgumentParser(description='PyTorch FlowNet Training on several datasets',
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('data', metavar='DIR',
                     help='path to dataset')
 parser.add_argument('--dataset', metavar='DATASET', default='flying_chairs',
                     choices=dataset_names,
                     help='dataset type : ' +
-                        ' | '.join(dataset_names) +
-                        ' (default: flying_chairs)')
-parser.add_argument('-s', '--split', default=80, type=float, metavar='%',
-                    help='split percentage of train samples vs test (default: 80)')
+                        ' | '.join(dataset_names))
+parser.add_argument('-s', '--split', default=80,
+                    help='test-val split file')
 parser.add_argument('--arch', '-a', metavar='ARCH', default='flownets',
                     choices=model_names,
                     help='model architecture: ' +
-                        ' | '.join(model_names) +
-                        ' (default: flownets)')
+                        ' | '.join(model_names))
 parser.add_argument('--solver', default = 'adam',choices=['adam','sgd'],
-                    help='solvers: adam | sgd')
+                    help='solver algorithms')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
-                    help='number of data loading workers (default: 4)')
-parser.add_argument('--epochs', default=90, type=int, metavar='N',
-                    help='number of total epochs to run (default: 90')
+                    help='number of data loading workers')
+parser.add_argument('--epochs', default=300, type=int, metavar='N',
+                    help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
 parser.add_argument('--epoch-size', default=0, type=int, metavar='N',
                     help='manual epoch size (will match dataset size if not set)')
 parser.add_argument('-b', '--batch-size', default=16, type=int,
-                    metavar='N', help='mini-batch size (default: 16)')
+                    metavar='N', help='mini-batch size')
 parser.add_argument('--lr', '--learning-rate', default=0.0001, type=float,
                     metavar='LR', help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
@@ -59,30 +58,27 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--beta', default=0.999, type=float, metavar='M',
                     help='beta parameters for adam')
 parser.add_argument('--weight-decay', '--wd', default=4e-4, type=float,
-                    metavar='W', help='weight decay (default: 4e-4)')
+                    metavar='W', help='weight decay')
+parser.add_argument('--multiscale-weights', '-w', default=[0.005,0.01,0.02,0.08,0.32], type=float, nargs='*', help='training weight for each scale,\
+    from highest resolution (flow2) to lowest (flow6), must be 5 floats')
 parser.add_argument('--print-freq', '-p', default=10, type=int,
-                    metavar='N', help='print frequency (default: 10)')
-parser.add_argument('--resume', default='', type=str, metavar='PATH',
-                    help='path to latest checkpoint (default: none)')
+                    metavar='N', help='print frequency')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--pretrained', dest='pretrained', default = None,
                     help='path to pre-trained model')
-parser.add_argument('--log-summary', default = 'progress_log_summary.csv',
-                    help='csv where to save per-epoch train and test stats')
-parser.add_argument('--log-full', default = 'progress_log_full.csv',
-                    help='csv where to save per-gradient descent train stats')
 parser.add_argument('--no-date', action='store_true',
                     help='don\'t append date timestamp to folder' )
-parser.add_argument('--loss', default='L1', help='loss function to apply to multiScaleCriterion : L1 (default)| SmoothL1| MSE')
 parser.add_argument('--div-flow', default = 20,
                     help='value by which flow will be divided. Original value is 20 but 1 with batchNorm gives good results')
 
 best_EPE = -1
+n_iter = 0
 
 def main():
     global args, best_EPE, save_path
     args = parser.parse_args()
+    assert(len(args.multiscale_weights) == 5), "wrong multiscale-weights argument, you must provide exactly 5 values"
     save_path = '{},{},{}epochs{},b{},lr{}'.format(
         args.arch,
         args.solver,
@@ -91,20 +87,23 @@ def main():
         args.batch_size,
         args.lr)
     if not args.no_date:
-        timestamp = datetime.datetime.now().strftime("%a-%b-%d-%H:%M")
+        timestamp = datetime.datetime.now().strftime("%m-%d-%H:%M")
         save_path = os.path.join(timestamp,save_path)
     save_path = os.path.join(args.dataset,save_path)
     print('=> will save everything to {}'.format(save_path))
     if not os.path.exists(save_path):
         os.makedirs(save_path)
+
+    train_writer = SummaryWriter(os.path.join(save_path,'train'))
+    test_writer = SummaryWriter(os.path.join(save_path,'test'))
+    output_writers = []
+    for i in range(3):
+        output_writers.append(SummaryWriter(os.path.join(save_path,'test',str(i))))
     
     # Data loading code
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
     input_transform = transforms.Compose([
                 flow_transforms.ArrayToTensor(),
                 transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
-                normalize
         ])
     target_transform = transforms.Compose([
                 flow_transforms.ArrayToTensor(),
@@ -114,18 +113,18 @@ def main():
     if 'KITTI' in args.dataset:
         co_transform=flow_transforms.Compose([
             flow_transforms.RandomCrop((320,448)),
-            #random flips are not supported yet for tensor conversion, but will be
-            #flow_transforms.RandomVerticalFlip(),
-            #flow_transforms.RandomHorizontalFlip()
+            flow_transforms.RandomVerticalFlip(),
+            flow_transforms.RandomHorizontalFlip(),
+            flow_transforms.RandomColorWarp(30,0.3)
         ])
     else:
         co_transform=flow_transforms.Compose([
             flow_transforms.RandomTranslate(10),
             flow_transforms.RandomRotate(10,5),
             flow_transforms.RandomCrop((320,448)),
-            #random flips are not supported yet for tensor conversion, but will be
-            #flow_transforms.RandomVerticalFlip(),
-            #flow_transforms.RandomHorizontalFlip()
+            flow_transforms.RandomVerticalFlip(),
+            flow_transforms.RandomHorizontalFlip(),
+            flow_transforms.RandomColorWarp(0,0)
         ])
 
 
@@ -142,11 +141,10 @@ def main():
                                                                            len(test_set)))
     train_loader = torch.utils.data.DataLoader(
         train_set, batch_size=args.batch_size,
-        sampler=balancedsampler.RandomBalancedSampler(train_set,args.epoch_size),
-        num_workers=args.workers, pin_memory=True)
+        num_workers=args.workers, pin_memory=True, shuffle=True)
     val_loader = torch.utils.data.DataLoader(
         test_set, batch_size=args.batch_size,
-        num_workers=args.workers, pin_memory=True)
+        num_workers=args.workers, pin_memory=True, shuffle=False)
     
     # create model
     if args.pretrained:
@@ -155,10 +153,7 @@ def main():
         print("=> creating model '{}'".format(args.arch))
 
     model = models.__dict__[args.arch](args.pretrained).cuda()
-
     model = torch.nn.DataParallel(model).cuda()
-    criterion = multiscaleloss(sparse = 'KITTI' in args.dataset, loss=args.loss).cuda()
-    high_res_EPE = multiscaleloss(scales=1, downscale=4, weights=(1), loss='L1', sparse = 'KITTI' in args.dataset).cuda()
     cudnn.benchmark = True
 
 
@@ -174,30 +169,24 @@ def main():
                                 weight_decay=args.weight_decay)
 
     if args.evaluate:
-        best_EPE = validate(val_loader, model, criterion, high_res_EPE)
+        best_EPE = validate(val_loader, model, 0, output_writers)
         return
-
-    with open(os.path.join(save_path,args.log_summary), 'w') as csvfile:
-        writer = csv.writer(csvfile, delimiter='\t')
-        writer.writerow(['train_loss','train_EPE','EPE'])
-    
-    with open(os.path.join(save_path,args.log_full), 'w') as csvfile:
-        writer = csv.writer(csvfile, delimiter='\t')
-        writer.writerow(['train_loss','train_EPE'])
 
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch)
 
         # train for one epoch
-        train_loss, train_EPE = train(train_loader, model, criterion, high_res_EPE, optimizer, epoch)
+        train_loss, train_EPE = train(train_loader, model, optimizer, epoch, train_writer)
+        train_writer.add_scalar('mean EPE', train_EPE, epoch)
 
-        # evaluate o validation set
+        # evaluate on validation set
 
-        EPE = validate(val_loader, model, criterion, high_res_EPE)
+        EPE = validate(val_loader, model, epoch, output_writers)
+        test_writer.add_scalar('mean EPE', EPE, epoch)
+
         if best_EPE<0:
             best_EPE = EPE
 
-        # remember best prec@1 and save checkpoint
         is_best = EPE < best_EPE
         best_EPE = min(EPE, best_EPE)
         save_checkpoint({
@@ -208,16 +197,14 @@ def main():
         }, is_best)
 
 
-        with open(os.path.join(save_path,args.log_summary), 'a') as csvfile:
-            writer = csv.writer(csvfile, delimiter='\t')
-            writer.writerow([train_loss,train_EPE,EPE])
-
-
-def train(train_loader, model, criterion, EPE, optimizer, epoch):
+def train(train_loader, model, optimizer, epoch, train_writer):
+    global n_iter, args
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
     flow2_EPEs = AverageMeter()
+
+    epoch_size = len(train_loader) if args.epoch_size == 0 else min(len(train_loader), args.epoch_size)
 
     # switch to train mode
     model.train()
@@ -229,20 +216,21 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
         # measure data loading time
         data_time.update(time.time() - end)
         target = target.cuda(async=True)
-        input = [j.cuda(0) for j in input]
+        input = [j.cuda() for j in input]
         input_var = torch.autograd.Variable(torch.cat(input,1))
         target_var = torch.autograd.Variable(target)
 
         # compute output
         output = model(input_var)
 
-        loss = criterion(output, target_var)
-        flow2_EPE = args.div_flow*EPE(output[0], target_var)
+        loss = multiscaleEPE(output, target_var, weights=[0.005,0.01,0.02,0.08,0.32])
+        flow2_EPE = args.div_flow * realEPE(output[0], target_var)
         # record loss and EPE
         losses.update(loss.data[0], target.size(0))
+        train_writer.add_scalar('train_loss', loss.data[0], n_iter)
         flow2_EPEs.update(flow2_EPE.data[0], target.size(0))
 
-        # compute gradient and do SGD step
+        # compute gradient and do optimization step
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -251,24 +239,25 @@ def train(train_loader, model, criterion, EPE, optimizer, epoch):
         batch_time.update(time.time() - end)
         end = time.time()
 
-        with open(os.path.join(save_path,args.log_full), 'a') as csvfile:
-            writer = csv.writer(csvfile, delimiter='\t')
-            writer.writerow([loss.data[0],flow2_EPE.data[0]])
-
         if i % args.print_freq == 0:
             print('Epoch: [{0}][{1}/{2}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                   'EPE {flow2_EPE.val:.3f} ({flow2_EPE.avg:.3f})'.format(
-                   epoch, i, len(train_loader), batch_time=batch_time,
+                   epoch, i, epoch_size, batch_time=batch_time,
                    data_time=data_time, loss=losses, flow2_EPE=flow2_EPEs))
+        n_iter += 1
+        if i >= epoch_size:
+            break
 
 
     return losses.avg, flow2_EPEs.avg
 
 
-def validate(val_loader, model, criterion, EPE):
+def validate(val_loader, model, epoch, output_writers):
+    global args
+
     batch_time = AverageMeter()
     flow2_EPEs = AverageMeter()
 
@@ -283,7 +272,7 @@ def validate(val_loader, model, criterion, EPE):
 
         # compute output
         output = model(input_var)
-        flow2_EPE = args.div_flow*EPE(output, target_var)
+        flow2_EPE = args.div_flow*realEPE(output, target_var)
         # record EPE
         flow2_EPEs.update(flow2_EPE.data[0], target.size(0))
 
@@ -291,6 +280,13 @@ def validate(val_loader, model, criterion, EPE):
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
+
+        if i < len(output_writers):  # log first output of first batches
+            if epoch == 0:
+                output_writers[i].add_image('GroundTruth', flow2rgb(args.div_flow * target[0].cpu().numpy(), max_value=10), 0)
+                output_writers[i].add_image('Inputs', input[0][0].numpy().transpose(1, 2, 0), 0)
+                output_writers[i].add_image('Inputs', input[1][0].numpy().transpose(1, 2, 0), 1)
+            output_writers[i].add_image('FlowNet Outputs', flow2rgb(args.div_flow * output.data[0].cpu().numpy(), max_value=10), epoch)
 
         if i % args.print_freq == 0:
             print('Test: [{0}/{1}]\t'
@@ -335,6 +331,16 @@ def adjust_learning_rate(optimizer, epoch):
     if epoch == 100 or epoch == 150 or epoch == 200:
         for param_group in optimizer.param_groups:
             param_group['lr'] = param_group['lr']/2
+
+def flow2rgb(flow_map, max_value):
+    _, h, w = flow_map.shape
+    rgb_map = np.ones((h,w,3)).astype(np.float32)
+    normalized_flow_map = flow_map/max_value
+    rgb_map[:,:,0] += normalized_flow_map[0]
+    rgb_map[:,:,1] -= 0.5*(normalized_flow_map[0] + normalized_flow_map[1])
+    rgb_map[:,:,2] += normalized_flow_map[1]
+    return rgb_map.clip(0,1)
+
 
 if __name__ == '__main__':
     main()
