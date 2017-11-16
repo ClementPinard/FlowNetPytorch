@@ -20,6 +20,14 @@ Thanks to [Kaixhin](https://github.com/Kaixhin) you can download a pretrained ve
 ### Note on networks from caffe
 These networks expect a BGR input in range [0,1]. However, BGR order is not very important as original caffe code used color warps as data augmentation.
 
+## Prerequisite
+
+	pytorch >= 0.2
+	tensorboard-pytorch
+	tensorboardX
+	scipy
+	argparse
+
 ## Training on Flying Chair Dataset
 
 First, you need to download the [the flying chair dataset](http://lmb.informatik.uni-freiburg.de/resources/datasets/FlyingChairs.en.html) . It is ~64GB big and we recommend you put in a SSD Drive.
