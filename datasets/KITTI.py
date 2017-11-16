@@ -3,6 +3,7 @@ import random
 import glob
 import math
 from .listdataset import ListDataset
+from .util import split2list
 from scipy.ndimage import imread
 import numpy as np
 import flow_transforms
@@ -37,11 +38,7 @@ def make_dataset(dir, occ=True, split = 0):
             continue
         images.append([[img1,img2],flow_map])
 
-    assert(len(images) > 0)
-    random.shuffle(images)
-    split_index = math.floor(len(images)*split/100)
-    assert(split_index >= 0 and split_index <= len(images))
-    return (images[:split_index], images[split_index+1:]) if split_index < len(images) else (images, [])
+    return split2list(images, split, default_split=0.9)
 
 def KITTI_loader(root,path_imgs, path_flo):
     imgs = [os.path.join(root,path) for path in path_imgs]

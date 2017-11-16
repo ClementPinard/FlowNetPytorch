@@ -18,7 +18,7 @@ def load_flo(path):
 def default_loader(root, path_imgs, path_flo):
     imgs = [os.path.join(root,path) for path in path_imgs]
     flo = os.path.join(root,path_flo)
-    return [imread(img) for img in imgs],load_flo(flo) 
+    return [imread(img).astype(np.float32) for img in imgs],load_flo(flo) 
 
 class ListDataset(data.Dataset):
     def __init__(self, root, path_list, transform=None, target_transform=None,

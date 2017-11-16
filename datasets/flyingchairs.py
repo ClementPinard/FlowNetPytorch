@@ -2,9 +2,11 @@ import os.path
 import random
 import glob
 import math
+import numpy as np
 from .listdataset import ListDataset
+from .util import split2list
 
-def make_dataset(dir,split = 0):
+def make_dataset(dir,split = None):
     '''Will search for triplets that go by the pattern '[name]_img1.ppm  [name]_img2.ppm    [name]_flow.flo' '''
     images = []
     for flow_map in glob.iglob(os.path.join(dir,'*_flow.flo')):
@@ -17,16 +19,12 @@ def make_dataset(dir,split = 0):
 
         images.append([[img1,img2],flow_map])
 
-    assert(len(images) > 0)
-    random.shuffle(images)
-    split_index = int(math.floor(len(images)*split/100))
-    assert(split_index >= 0 and split_index <= len(images))
-    return (images[:split_index], images[split_index:]) if split_index < len(images) else (images, [])
+    return split2list(images, split, default_split=0.97)
 
 
 
 def flying_chairs(root, transform=None, target_transform=None,
-                 co_transform=None, split = 80):
+                 co_transform=None, split=None):
     train_list, test_list = make_dataset(root,split)
     train_dataset = ListDataset(root, train_list, transform, target_transform, co_transform)
     test_dataset = ListDataset(root, test_list, transform, target_transform)
