@@ -122,7 +122,7 @@ class RandomCrop(object):
         y1 = random.randint(0, h - th)
         inputs[0] = inputs[0][y1 : y1 + th,x1 : x1 + tw]
         inputs[1] = inputs[1][y1 : y1 + th,x1 : x1 + tw]
-        return inputs,target[y1 : y1 + th,x1 : x1 + tw]
+        return inputs, target[y1 : y1 + th,x1 : x1 + tw]
 
 
 class RandomHorizontalFlip(object):
@@ -130,9 +130,9 @@ class RandomHorizontalFlip(object):
     """
     def __call__(self, inputs, target):
         if random.random() < 0.5:
-            inputs[0] = np.fliplr(inputs[0])
-            inputs[1] = np.fliplr(inputs[1])
-            target = np.fliplr(target)
+            inputs[0] = np.copy(np.fliplr(inputs[0]))
+            inputs[1] = np.copy(np.fliplr(inputs[1]))
+            target = np.copy(np.fliplr(target))
             target[:,:,0]*=-1
         return inputs,target
 
@@ -141,9 +141,9 @@ class RandomVerticalFlip(object):
     """
     def __call__(self, inputs, target):
         if random.random() < 0.5:
-            inputs[0] = np.flipud(inputs[0])
-            inputs[1] = np.flipud(inputs[1])
-            target = np.flipud(target)
+            inputs[0] = np.copy(np.flipud(inputs[0]))
+            inputs[1] = np.copy(np.flipud(inputs[1]))
+            target = np.copy(np.flipud(target))
             target[:,:,1]*=-1
         return inputs,target
 
@@ -181,65 +181,10 @@ class RandomRotate(object):
         inputs[1] = ndimage.interpolation.rotate(inputs[1], angle2, reshape=self.reshape, order=self.order)
         target = ndimage.interpolation.rotate(target, angle1, reshape=self.reshape, order=self.order)
         #flow vectors must be rotated too! careful about Y flow which is upside down
-        target_=np.array(target, copy=True)
+        target_=np.copy(target)
         target[:,:,0] = np.cos(angle1_rad)*target_[:,:,0] + np.sin(angle1_rad)*target_[:,:,1]
         target[:,:,1] = -np.sin(angle1_rad)*target_[:,:,0] + np.cos(angle1_rad)*target_[:,:,1]
         return inputs,target
-
-class RandomCropRotate(object):
-    """Random rotation of the image from -angle to angle (in degrees)
-    A crop is done to keep same image ratio, and no black pixels
-    angle: max angle of the rotation, cannot be more than 180 degrees
-    interpolation order: Default: 2 (bilinear)
-    """
-    def __init__(self, angle, size, diff_angle=0, order=2):
-        self.angle = angle
-        self.order = order
-        self.diff_angle = diff_angle
-        self.size = size
-
-    def __call__(self, inputs,target):
-        applied_angle  = random.uniform(-self.angle,self.angle)
-        diff = random.uniform(-self.diff_angle,self.diff_angle)
-        angle1 = applied_angle - diff/2
-        angle2 = applied_angle + diff/2
-        
-        angle1_rad = angle1*np.pi/180
-        angle2_rad = angle2*np.pi/180
-
-        h, w, _ = inputs[0].shape
-
-        def rotate_flow(i,j,k):
-            return -k*(j-w/2)*(diff*np.pi/180) + (1-k)*(i-h/2)*(diff*np.pi/180)
-
-        rotate_flow_map = np.fromfunction(rotate_flow, target.shape)
-        target += rotate_flow_map
-
-        inputs[0] = ndimage.interpolation.rotate(inputs[0], angle1, reshape=True, order=self.order)
-        inputs[1] = ndimage.interpolation.rotate(inputs[1], angle2, reshape=True, order=self.order)
-        target = ndimage.interpolation.rotate(target, angle1, reshape=True, order=self.order)
-        #flow vectors must be rotated too!
-        target_=np.array(target, copy=True)
-        target[:,:,0] = np.cos(angle1_rad)*target_[:,:,0] - np.sin(angle1_rad)*target_[:,:,1]
-        target[:,:,1] = np.sin(angle1_rad)*target_[:,:,0] + np.cos(angle1_rad)*target_[:,:,1]
-
-        #keep angle1 and angle2 within [0,pi/2] with a reflection at pi/2: -1rad is 1rad, 2rad is pi - 2 rad
-        angle1_rad = np.pi/2 - np.abs(angle1_rad%np.pi - np.pi/2)
-        angle2_rad = np.pi/2 - np.abs(angle2_rad%np.pi - np.pi/2)
-
-        c1 = np.cos(angle1_rad)
-        s1 = np.sin(angle1_rad)
-        c2 = np.cos(angle2_rad)
-        s2 = np.sin(angle2_rad)
-        c_diag = h/np.sqrt(h*h+w*w)
-        s_diag = w/np.sqrt(h*h+w*w)
-
-        ratio = c_diag/max(c1*c_diag+s1*s_diag,c2*c_diag+s2*s_diag)
-
-        crop = CenterCrop((int(h*ratio),int(w*ratio)))
-        scale = Scale(self.size)
-        inputs, target = crop(inputs, target)
-        return scale(inputs,target)
 
 class RandomTranslate(object):
     def __init__(self, translation):
@@ -265,5 +210,27 @@ class RandomTranslate(object):
         target= target[y1:y2,x1:x2]
         target[:,:,0]+= tw
         target[:,:,1]+= th
+
+        return inputs, target
+
+class RandomColorWarp(object):
+    def __init__(self, mean_range=0, std_range=0):
+        self.mean_range = mean_range
+        self.std_range = std_range
+
+    def __call__(self, inputs, target):
+        random_std = np.random.uniform(-self.std_range, self.std_range, 3)
+        random_mean = np.random.uniform(-self.mean_range, self.mean_range, 3)
+        random_order = np.random.permutation(3)
+
+
+        inputs[0] *= (1 + random_std)
+        inputs[0] += random_mean
+
+        inputs[1] *= (1 + random_std)
+        inputs[1] += random_mean
+
+        inputs[0] = inputs[0][:,:,random_order]
+        inputs[1] = inputs[1][:,:,random_order]
 
         return inputs, target
