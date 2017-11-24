@@ -17,10 +17,9 @@ def multiscaleEPE(network_output, target_flow, weights=None, sparse=False):
 
         if sparse:
             target_scaled = nn.functional.adaptive_max_pool2d(target, (h, w))
-            return (output - target_scaled)[target_scaled == 0].abs().mean()
         else:
             target_scaled = nn.functional.adaptive_avg_pool2d(target, (h, w))
-            return (output - target_scaled).pow(2).mean()
+        return EPE(output, target_scaled, sparse)
 
     if type(network_output) not in [tuple, list]:
         network_output = [network_output]
