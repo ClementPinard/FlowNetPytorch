@@ -1,11 +1,7 @@
 import os.path
-import random
 import glob
-import math
 from .listdataset import ListDataset
 from .util import split2list
-from scipy.ndimage import imread
-import numpy as np
 import flow_transforms
 
 '''
@@ -15,13 +11,13 @@ clean version imgs are without shaders, final version imgs are fully rendered
 The dataset is not very big, you might want to only pretrain on it for flownet
 '''
 
-def make_dataset(dir, dataset_type = 'clean', split = None):
+
+def make_dataset(dir, dataset_type='clean', split=None):
     training_dir = os.path.join(dir,'training')
     flow_dir = 'flow'
-    assert(os.path.isdir(os.path.join(dir,flow_dir)))
-    
+    assert(os.path.isdir(os.path.join(training_dir,flow_dir)))
     img_dir = dataset_type
-    assert(os.path.isdir(os.path.join(dir,img_dir)))
+    assert(os.path.isdir(os.path.join(training_dir,img_dir)))
 
     images = []
     for flow_map in glob.iglob(os.path.join(dir,flow_dir,'*','*.flo')):
@@ -37,24 +33,27 @@ def make_dataset(dir, dataset_type = 'clean', split = None):
 
     return split2list(images, split, default_split=0.87)
 
+
 def mpi_sintel_clean(root, transform=None, target_transform=None,
-                 co_transform=None, split = 80):
+                     co_transform=None, split=80):
     train_list, test_list = make_dataset(root,'clean',split)
     train_dataset = ListDataset(root, train_list, transform, target_transform, co_transform)
     test_dataset = ListDataset(root, test_list, transform, target_transform, flow_transforms.CenterCrop((384,1024)))
 
     return train_dataset, test_dataset
 
+
 def mpi_sintel_final(root, transform=None, target_transform=None,
-                 co_transform=None, split = 80):
+                     co_transform=None, split=80):
     train_list, test_list = make_dataset(root,'final',split)
     train_dataset = ListDataset(root, train_list, transform, target_transform, co_transform)
     test_dataset = ListDataset(root, test_list, transform, target_transform, flow_transforms.CenterCrop((384,1024)))
 
     return train_dataset, test_dataset
 
+
 def mpi_sintel_both(root, transform=None, target_transform=None,
-                 co_transform=None, split = 80):
+                    co_transform=None, split=80):
     '''load images from both clean and final folders.
     We cannot shuffle input, because it would very likely cause data snooping
     for the clean and final frames are not that different'''
@@ -64,4 +63,3 @@ def mpi_sintel_both(root, transform=None, target_transform=None,
     test_dataset = ListDataset(root, test_list1 + test_list2, transform, target_transform, flow_transforms.CenterCrop((384,1024)))
 
     return train_dataset, test_dataset
-

@@ -4,7 +4,6 @@ import shutil
 import time
 
 import torch
-import torch.nn as nn
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim
@@ -14,13 +13,12 @@ import flow_transforms
 import models
 import datasets
 from multiscaleloss import multiscaleEPE, realEPE
-import os
 import datetime
 from tensorboardX import SummaryWriter
 import numpy as np
 
 model_names = sorted(name for name in models.__dict__
-    if name.islower() and not name.startswith("__"))
+                     if name.islower() and not name.startswith("__"))
 
 dataset_names = sorted(name for name in datasets.__all__)
 
@@ -32,14 +30,14 @@ parser.add_argument('data', metavar='DIR',
 parser.add_argument('--dataset', metavar='DATASET', default='flying_chairs',
                     choices=dataset_names,
                     help='dataset type : ' +
-                        ' | '.join(dataset_names))
+                    ' | '.join(dataset_names))
 parser.add_argument('-s', '--split', default=80,
                     help='test-val split file')
 parser.add_argument('--arch', '-a', metavar='ARCH', default='flownets',
                     choices=model_names,
                     help='model architecture: ' +
-                        ' | '.join(model_names))
-parser.add_argument('--solver', default = 'adam',choices=['adam','sgd'],
+                    ' | '.join(model_names))
+parser.add_argument('--solver', default='adam',choices=['adam','sgd'],
                     help='solver algorithms')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers')
@@ -59,26 +57,29 @@ parser.add_argument('--beta', default=0.999, type=float, metavar='M',
                     help='beta parameters for adam')
 parser.add_argument('--weight-decay', '--wd', default=4e-4, type=float,
                     metavar='W', help='weight decay')
-parser.add_argument('--multiscale-weights', '-w', default=[0.005,0.01,0.02,0.08,0.32], type=float, nargs='*', help='training weight for each scale,\
-    from highest resolution (flow2) to lowest (flow6), must be 5 floats')
+parser.add_argument('--bias-decay', default=0, type=float,
+                    metavar='B', help='bias decay')
+parser.add_argument('--multiscale-weights', '-w', default=[0.005,0.01,0.02,0.08,0.32], type=float, nargs=5,
+                    help='training weight for each scale, from highest resolution (flow2) to lowest (flow6)',
+                    metavar=('W2', 'W3', 'W4', 'W5', 'W6'))
 parser.add_argument('--print-freq', '-p', default=10, type=int,
                     metavar='N', help='print frequency')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
-parser.add_argument('--pretrained', dest='pretrained', default = None,
+parser.add_argument('--pretrained', dest='pretrained', default=None,
                     help='path to pre-trained model')
 parser.add_argument('--no-date', action='store_true',
                     help='don\'t append date timestamp to folder' )
-parser.add_argument('--div-flow', default = 20,
+parser.add_argument('--div-flow', default=20,
                     help='value by which flow will be divided. Original value is 20 but 1 with batchNorm gives good results')
 
 best_EPE = -1
 n_iter = 0
 
+
 def main():
     global args, best_EPE, save_path
     args = parser.parse_args()
-    assert(len(args.multiscale_weights) == 5), "wrong multiscale-weights argument, you must provide exactly 5 values"
     save_path = '{},{},{}epochs{},b{},lr{}'.format(
         args.arch,
         args.solver,
@@ -99,26 +100,27 @@ def main():
     output_writers = []
     for i in range(3):
         output_writers.append(SummaryWriter(os.path.join(save_path,'test',str(i))))
-    
+
     # Data loading code
     input_transform = transforms.Compose([
-                flow_transforms.ArrayToTensor(),
-                transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
-        ])
+        flow_transforms.ArrayToTensor(),
+        transforms.Normalize(mean=[0.411, 0.432, 0.45], std=[255,255,255]),
+        transforms.Normalize(mean=[0,0,0], std=[1,1,1])
+    ])
     target_transform = transforms.Compose([
-                flow_transforms.ArrayToTensor(),
-                transforms.Normalize(mean=[0,0],std=[args.div_flow,args.div_flow])
-        ])
+        flow_transforms.ArrayToTensor(),
+        transforms.Normalize(mean=[0,0],std=[args.div_flow,args.div_flow])
+    ])
 
     if 'KITTI' in args.dataset:
-        co_transform=flow_transforms.Compose([
+        co_transform = flow_transforms.Compose([
             flow_transforms.RandomCrop((320,448)),
             flow_transforms.RandomVerticalFlip(),
             flow_transforms.RandomHorizontalFlip(),
             flow_transforms.RandomColorWarp(30,0.3)
         ])
     else:
-        co_transform=flow_transforms.Compose([
+        co_transform = flow_transforms.Compose([
             flow_transforms.RandomTranslate(10),
             flow_transforms.RandomRotate(10,5),
             flow_transforms.RandomCrop((320,448)),
@@ -126,7 +128,6 @@ def main():
             flow_transforms.RandomHorizontalFlip(),
             flow_transforms.RandomColorWarp(0,0)
         ])
-
 
     print("=> fetching img pairs in '{}'".format(args.data))
     train_set, test_set = datasets.__dict__[args.dataset](
@@ -145,7 +146,7 @@ def main():
     val_loader = torch.utils.data.DataLoader(
         test_set, batch_size=args.batch_size,
         num_workers=args.workers, pin_memory=True, shuffle=False)
-    
+
     # create model
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
@@ -155,18 +156,16 @@ def main():
     model = models.__dict__[args.arch](args.pretrained).cuda()
     model = torch.nn.DataParallel(model).cuda()
     cudnn.benchmark = True
-
-
     assert(args.solver in ['adam', 'sgd'])
     print('=> setting {} solver'.format(args.solver))
+    param_groups = [{'params': model.module.bias_parameters(), 'weight_decay': args.bias_decay},
+                    {'params': model.module.weight_parameters(), 'weight_decay': args.weight_decay}]
     if args.solver == 'adam':
-        optimizer = torch.optim.Adam(model.parameters(), args.lr,
-                                betas = (args.momentum, args.beta),
-                                weight_decay=args.weight_decay)
+        optimizer = torch.optim.Adam(param_groups, args.lr,
+                                     betas=(args.momentum, args.beta))
     elif args.solver == 'sgd':
-        optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
+        optimizer = torch.optim.SGD(param_groups, args.lr,
+                                    momentum=args.momentum)
 
     if args.evaluate:
         best_EPE = validate(val_loader, model, 0, output_writers)
@@ -184,7 +183,7 @@ def main():
         EPE = validate(val_loader, model, epoch, output_writers)
         test_writer.add_scalar('mean EPE', EPE, epoch)
 
-        if best_EPE<0:
+        if best_EPE < 0:
             best_EPE = EPE
 
         is_best = EPE < best_EPE
@@ -210,7 +209,6 @@ def train(train_loader, model, optimizer, epoch, train_writer):
     model.train()
 
     end = time.time()
-    
 
     for i, (input, target) in enumerate(train_loader):
         # measure data loading time
@@ -223,7 +221,7 @@ def train(train_loader, model, optimizer, epoch, train_writer):
         # compute output
         output = model(input_var)
 
-        loss = multiscaleEPE(output, target_var, weights=[0.005,0.01,0.02,0.08,0.32])
+        loss = multiscaleEPE(output, target_var, weights=args.multiscale_weights)
         flow2_EPE = args.div_flow * realEPE(output[0], target_var)
         # record loss and EPE
         losses.update(loss.data[0], target.size(0))
@@ -245,12 +243,11 @@ def train(train_loader, model, optimizer, epoch, train_writer):
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                   'EPE {flow2_EPE.val:.3f} ({flow2_EPE.avg:.3f})'.format(
-                   epoch, i, epoch_size, batch_time=batch_time,
-                   data_time=data_time, loss=losses, flow2_EPE=flow2_EPEs))
+                      epoch, i, epoch_size, batch_time=batch_time,
+                      data_time=data_time, loss=losses, flow2_EPE=flow2_EPEs))
         n_iter += 1
         if i >= epoch_size:
             break
-
 
     return losses.avg, flow2_EPEs.avg
 
@@ -276,7 +273,6 @@ def validate(val_loader, model, epoch, output_writers):
         # record EPE
         flow2_EPEs.update(flow2_EPE.data[0], target.size(0))
 
-
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
@@ -292,8 +288,8 @@ def validate(val_loader, model, epoch, output_writers):
             print('Test: [{0}/{1}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'EPE {flow2_EPE.val:.3f} ({flow2_EPE.avg:.3f})'.format(
-                   i, len(val_loader), batch_time=batch_time,
-                   flow2_EPE=flow2_EPEs))
+                      i, len(val_loader), batch_time=batch_time,
+                      flow2_EPE=flow2_EPEs))
 
     print(' * EPE {flow2_EPE.avg:.3f}'
           .format(flow2_EPE=flow2_EPEs))
@@ -309,6 +305,7 @@ def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
+
     def __init__(self):
         self.reset()
 
@@ -325,12 +322,12 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-
 def adjust_learning_rate(optimizer, epoch):
     """Sets the learning rate to the initial LR decayed by 2 after 300K iterations, 400K and 500K"""
     if epoch == 100 or epoch == 150 or epoch == 200:
         for param_group in optimizer.param_groups:
             param_group['lr'] = param_group['lr']/2
+
 
 def flow2rgb(flow_map, max_value):
     _, h, w = flow_map.shape

@@ -1,11 +1,11 @@
 import torch
 import torch.nn as nn
-import math
+
 
 def EPE(input_flow, target_flow, sparse=False):
     EPE_map = torch.norm(target_flow-input_flow,2,1)
     if sparse:
-        return EPE_map[target_flow==0].mean()
+        return EPE_map[target_flow == 0].mean()
     else:
         return EPE_map.mean()
 
@@ -17,10 +17,10 @@ def multiscaleEPE(network_output, target_flow, weights=None, sparse=False):
 
         if sparse:
             target_scaled = nn.functional.adaptive_max_pool2d(target, (h, w))
-            return (output - target_scaled)[target_scaled==0].abs().mean()
+            return (output - target_scaled)[target_scaled == 0].abs().mean()
         else:
             target_scaled = nn.functional.adaptive_avg_pool2d(target, (h, w))
-            return (output - target_scaled).abs().mean()
+            return (output - target_scaled).pow(2).mean()
 
     if type(network_output) not in [tuple, list]:
         network_output = [network_output]
@@ -32,6 +32,7 @@ def multiscaleEPE(network_output, target_flow, weights=None, sparse=False):
     for output, weight in zip(network_output, weights):
         loss += weight * one_scale(output, target_flow, sparse)
     return loss
+
 
 def realEPE(output, target, sparse=False):
     b, _, h, w = target.size()

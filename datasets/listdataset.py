@@ -4,6 +4,7 @@ import os.path
 from scipy.ndimage import imread
 import numpy as np
 
+
 def load_flo(path):
     with open(path, 'rb') as f:
         magic = np.fromfile(f, np.float32, count=1)
@@ -15,10 +16,12 @@ def load_flo(path):
     data2D = np.resize(data, (w, h, 2))
     return data2D
 
+
 def default_loader(root, path_imgs, path_flo):
     imgs = [os.path.join(root,path) for path in path_imgs]
     flo = os.path.join(root,path_flo)
-    return [imread(img).astype(np.float32) for img in imgs],load_flo(flo) 
+    return [imread(img).astype(np.float32) for img in imgs],load_flo(flo)
+
 
 class ListDataset(data.Dataset):
     def __init__(self, root, path_list, transform=None, target_transform=None,
@@ -40,7 +43,7 @@ class ListDataset(data.Dataset):
         if self.transform is not None:
             inputs[0] = self.transform(inputs[0])
             inputs[1] = self.transform(inputs[1])
-        if self.target_transform is not None :
+        if self.target_transform is not None:
             target = self.target_transform(target)
         return inputs, target
 

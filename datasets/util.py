@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def split2list(images, split, default_split=0.9):
     if isinstance(split, str):
         with open(split) as f:

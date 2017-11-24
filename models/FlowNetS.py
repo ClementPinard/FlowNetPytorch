@@ -6,6 +6,7 @@ __all__ = [
     'FlowNetS', 'flownets', 'flownets_bn'
 ]
 
+
 def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
     if batchNorm:
         return nn.Sequential(
@@ -19,12 +20,14 @@ def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
             nn.LeakyReLU(0.1,inplace=True)
         )
 
+
 def predict_flow(in_planes):
     return nn.Conv2d(in_planes,2,kernel_size=3,stride=1,padding=1,bias=False)
 
+
 def deconv(in_planes, out_planes):
     return nn.Sequential(
-        nn.ConvTranspose2d(in_planes, out_planes, kernel_size=4, stride=2, padding=1, bias=True),
+        nn.ConvTranspose2d(in_planes, out_planes, kernel_size=4, stride=2, padding=1, bias=False),
         nn.LeakyReLU(0.1,inplace=True)
     )
 
@@ -73,9 +76,6 @@ class FlowNetS(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-
-
-
     def forward(self, x):
         out_conv2 = self.conv2(self.conv1(x))
         out_conv3 = self.conv3_1(self.conv3(out_conv2))
@@ -86,12 +86,12 @@ class FlowNetS(nn.Module):
         flow6       = self.predict_flow6(out_conv6)
         flow6_up    = self.upsampled_flow6_to_5(flow6)
         out_deconv5 = self.deconv5(out_conv6)
-        
+
         concat5 = torch.cat((out_conv5,out_deconv5,flow6_up),1)
         flow5       = self.predict_flow5(concat5)
         flow5_up    = self.upsampled_flow5_to_4(flow5)
         out_deconv4 = self.deconv4(concat5)
-        
+
         concat4 = torch.cat((out_conv4,out_deconv4,flow5_up),1)
         flow4       = self.predict_flow4(concat4)
         flow4_up    = self.upsampled_flow4_to_3(flow4)
@@ -101,7 +101,7 @@ class FlowNetS(nn.Module):
         flow3       = self.predict_flow3(concat3)
         flow3_up    = self.upsampled_flow3_to_2(flow3)
         out_deconv2 = self.deconv2(concat3)
-        
+
         concat2 = torch.cat((out_conv2,out_deconv2,flow3_up),1)
         flow2 = self.predict_flow2(concat2)
 
@@ -110,7 +110,11 @@ class FlowNetS(nn.Module):
         else:
             return flow2
 
+    def weight_parameters(self):
+        return [param for name, param in self.named_parameters() if 'weight' in name]
 
+    def bias_parameters(self):
+        return [param for name, param in self.named_parameters() if 'bias' in name]
 
 
 def flownets(path=None):
@@ -128,6 +132,7 @@ def flownets(path=None):
         else:
             model.load_state_dict(data)
     return model
+
 
 def flownets_bn(path=None):
     """FlowNetS model architecture from the
