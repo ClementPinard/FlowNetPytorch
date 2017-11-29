@@ -22,7 +22,7 @@ These networks expect a BGR input in range [-0.5,0.5]. However, BGR order is not
 
 ## Prerequisite
 
-	pytorch >= 0.2
+	pytorch >= 0.3
 	tensorboard-pytorch
 	tensorboardX
 	scipy
