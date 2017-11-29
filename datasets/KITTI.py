@@ -17,7 +17,7 @@ def load_flow_from_png(png_path):
     return(imread(png_path)[:,:,0:2].astype(float) - 128)
 
 
-def make_dataset(dir, occ=True, split=0):
+def make_dataset(dir, split, occ=True):
     '''Will search in training folder for folders 'flow_noc' or 'flow_occ' and 'colored_0' (KITTI 2012) or 'image_2' (KITTI 2015) '''
     flow_dir = 'flow_occ' if occ else 'flow_noc'
     assert(os.path.isdir(os.path.join(dir,flow_dir)))
@@ -48,7 +48,7 @@ def KITTI_loader(root,path_imgs, path_flo):
 
 def KITTI_occ(root, transform=None, target_transform=None,
               co_transform=None, split=80):
-    train_list, test_list = make_dataset(root,True,split)
+    train_list, test_list = make_dataset(root, split, True)
     train_dataset = ListDataset(root, train_list, transform, target_transform, co_transform, loader=KITTI_loader)
     test_dataset = ListDataset(root, test_list, transform, target_transform, flow_transforms.CenterCrop((320,1216)), loader=KITTI_loader)
 
@@ -57,7 +57,7 @@ def KITTI_occ(root, transform=None, target_transform=None,
 
 def KITTI_noc(root, transform=None, target_transform=None,
               co_transform=None, split=80):
-    train_list, test_list = make_dataset(root,False,split)
+    train_list, test_list = make_dataset(root, split, False)
     train_dataset = ListDataset(root, train_list, transform, target_transform, co_transform, loader=KITTI_loader)
     test_dataset = ListDataset(root, test_list, transform, target_transform, flow_transforms.CenterCrop((320,1216)), loader=KITTI_loader)
 
