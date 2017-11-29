@@ -104,8 +104,8 @@ def main():
     # Data loading code
     input_transform = transforms.Compose([
         flow_transforms.ArrayToTensor(),
-        transforms.Normalize(mean=[0.411, 0.432, 0.45], std=[255,255,255]),
-        transforms.Normalize(mean=[0,0,0], std=[1,1,1])
+        transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
+        transforms.Normalize(mean=[0.411,0.432,0.45], std=[1,1,1])
     ])
     target_transform = transforms.Compose([
         flow_transforms.ArrayToTensor(),
@@ -171,8 +171,10 @@ def main():
         best_EPE = validate(val_loader, model, 0, output_writers)
         return
 
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100,150,200], gamma=0.5)
+
     for epoch in range(args.start_epoch, args.epochs):
-        adjust_learning_rate(optimizer, epoch)
+        scheduler.step()
 
         # train for one epoch
         train_loss, train_EPE = train(train_loader, model, optimizer, epoch, train_writer)
@@ -238,13 +240,9 @@ def train(train_loader, model, optimizer, epoch, train_writer):
         end = time.time()
 
         if i % args.print_freq == 0:
-            print('Epoch: [{0}][{1}/{2}]\t'
-                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                  'EPE {flow2_EPE.val:.3f} ({flow2_EPE.avg:.3f})'.format(
-                      epoch, i, epoch_size, batch_time=batch_time,
-                      data_time=data_time, loss=losses, flow2_EPE=flow2_EPEs))
+            print('Epoch: [{0}][{1}/{2}]\t Time {3}\t Data {4}\t Loss {5}\t EPE {6}'
+                  .format(epoch, i, epoch_size, batch_time,
+                          data_time, losses, flow2_EPEs))
         n_iter += 1
         if i >= epoch_size:
             break
@@ -280,19 +278,15 @@ def validate(val_loader, model, epoch, output_writers):
         if i < len(output_writers):  # log first output of first batches
             if epoch == 0:
                 output_writers[i].add_image('GroundTruth', flow2rgb(args.div_flow * target[0].cpu().numpy(), max_value=10), 0)
-                output_writers[i].add_image('Inputs', input[0][0].numpy().transpose(1, 2, 0), 0)
-                output_writers[i].add_image('Inputs', input[1][0].numpy().transpose(1, 2, 0), 1)
+                output_writers[i].add_image('Inputs', input[0][0].numpy().transpose(1, 2, 0) + np.array([0.411,0.432,0.45]), 0)
+                output_writers[i].add_image('Inputs', input[1][0].numpy().transpose(1, 2, 0) + np.array([0.411,0.432,0.45]), 1)
             output_writers[i].add_image('FlowNet Outputs', flow2rgb(args.div_flow * output.data[0].cpu().numpy(), max_value=10), epoch)
 
         if i % args.print_freq == 0:
-            print('Test: [{0}/{1}]\t'
-                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'EPE {flow2_EPE.val:.3f} ({flow2_EPE.avg:.3f})'.format(
-                      i, len(val_loader), batch_time=batch_time,
-                      flow2_EPE=flow2_EPEs))
+            print('Test: [{0}/{1}]\t Time {2}\t EPE {3}'
+                  .format(i, len(val_loader), batch_time, flow2_EPEs))
 
-    print(' * EPE {flow2_EPE.avg:.3f}'
-          .format(flow2_EPE=flow2_EPEs))
+    print(' * EPE {:.3f}'.format(flow2_EPEs.avg))
 
     return flow2_EPEs.avg
 
@@ -321,12 +315,8 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
-
-def adjust_learning_rate(optimizer, epoch):
-    """Sets the learning rate to the initial LR decayed by 2 after 300K iterations, 400K and 500K"""
-    if epoch == 100 or epoch == 150 or epoch == 200:
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = param_group['lr']/2
+    def __repr__(self):
+        return '{:.3f} ({:.3f})'.format(self.val, self.avg)
 
 
 def flow2rgb(flow_map, max_value):
