@@ -8,17 +8,17 @@ It has not been tested for multiple GPU, but it should work just as in original 
 
 The code provides a training example, using [the flying chair dataset](http://lmb.informatik.uni-freiburg.de/resources/datasets/FlyingChairs.en.html) , with data augmentation. An implementation for [Scene Flow Datasets](http://lmb.informatik.uni-freiburg.de/resources/datasets/SceneFlowDatasets.en.html) may be added in the future.
 
-As Graph versions are no longer needed for Pytorch, the two neural network models that are currently provided are :
+Two neural network models are currently provided :
 
  - **FlowNetS**
  - **FlowNetSBN**
 
-There is not current implementation of FlowNetC as a specific Correlation layer module would need to be written (feel free to contribute !)
+There is currently no implementation of FlowNetC as a specific Correlation layer module would need to be written (feel free to contribute !)
 
 ## Pretrained Models
-Thanks to [Kaixhin](https://github.com/Kaixhin) you can download a pretrained version of FlowNetS (from caffe, not from pytorch) [here](https://drive.google.com/open?id=0B5EC7HMbyk3CbjFPb0RuODI3NmM) . This folder also contains Pretrained models for Torch (version torch [here](https://github.com/ClementPinard/FlowNetTorch)
+Thanks to [Kaixhin](https://github.com/Kaixhin) you can download a pretrained version of FlowNetS (from caffe, not from pytorch) [here](https://drive.google.com/open?id=0B5EC7HMbyk3CbjFPb0RuODI3NmM). This folder also contains trained networks from scratch.
 ### Note on networks from caffe
-These networks expect a BGR input in range [0,1]. However, BGR order is not very important as original caffe code used color warps as data augmentation.
+These networks expect a BGR input in range [-0.5,0.5]. However, BGR order is not very important.
 
 ## Prerequisite
 
@@ -30,13 +30,13 @@ These networks expect a BGR input in range [0,1]. However, BGR order is not very
 
 ## Training on Flying Chair Dataset
 
-First, you need to download the [the flying chair dataset](http://lmb.informatik.uni-freiburg.de/resources/datasets/FlyingChairs.en.html) . It is ~64GB big and we recommend you put in a SSD Drive.
+First, you need to download the [the flying chair dataset](http://lmb.informatik.uni-freiburg.de/resources/datasets/FlyingChairs.en.html) . It is ~64GB big and we recommend you put it in a SSD Drive.
 
 Default HyperParameters provided in `main.py` are the same as in the caffe training scripts.
 
-Example usage for FlowNetSBN :
+Example usage for FlowNetS :
 
-     python main.py /path/to/flying_chairs/ -b 8 -j 8 -a flownets_bn
+     python main.py /path/to/flying_chairs/ -b8 -j8 -a flownets
 
 We recommend you set j (number of data threads) to high if you use DataAugmentation as to avoid data loading to slow the training.
 
@@ -52,11 +52,7 @@ For further help you can type
 ## Training results
 Under progress. The code and espetially transformations may have not be thoroughly investigated, so model convergence and quality is not garanteed yet
   
-## Note on dataset and transform function
-
-In this repo we address the question of splitted dataset and random transformations for both input and target, which are not currently formalized in official repo. It may change greatly in the future as Pytorch gets updated.
-
-### Random Transformations
+## Note on transform functions
 
 In order to have coherent transformations between inputs and target, we must define new transformations that take both input and target, as a new random variable is defined each time a random transformation is called.
 
