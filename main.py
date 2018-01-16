@@ -117,8 +117,7 @@ def main():
         co_transform = flow_transforms.Compose([
             flow_transforms.RandomCrop((320,448)),
             flow_transforms.RandomVerticalFlip(),
-            flow_transforms.RandomHorizontalFlip(),
-            flow_transforms.RandomColorWarp(30,0.3)
+            flow_transforms.RandomHorizontalFlip()
         ])
     else:
         co_transform = flow_transforms.Compose([
@@ -126,8 +125,7 @@ def main():
             flow_transforms.RandomRotate(10,5),
             flow_transforms.RandomCrop((320,448)),
             flow_transforms.RandomVerticalFlip(),
-            flow_transforms.RandomHorizontalFlip(),
-            flow_transforms.RandomColorWarp(0,0)
+            flow_transforms.RandomHorizontalFlip()
         ])
 
     print("=> fetching img pairs in '{}'".format(args.data))
