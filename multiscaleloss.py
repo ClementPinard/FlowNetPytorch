@@ -8,7 +8,7 @@ def EPE(input_flow, target_flow, sparse=False, sparse_mode='zero', mean=True):
         # invalid flow is defined with either one of flow coordinate to be NaN, or both coordinates to be 0
         if sparse_mode == 'zero':
             mask = (target_flow[:,0] == 0) & (target_flow[:,1] == 0)
-        elif sparse_mode == 'nan':
+        else:
             mask = (target_flow[:,0] != target_flow[:,0]) | (target_flow[:,1] == target_flow[:,1])
 
         EPE_map = EPE_map[~mask]
