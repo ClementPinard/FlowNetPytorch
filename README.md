@@ -55,10 +55,10 @@ For further help you can type
  
  Models were trained with default options unless specified. Color warping was not used.
 
-| Arch        | learning rate | batch size | epoch size | filename                  | validation EPE |
-| ----------- | ------------- | ---------- | ---------- | ------------------------- | -------------- |
-| FlowNetS    | 8e-4          | 8          | 1000       | flownets_EPE1.951.pth.tar | 1.951          |
-| FlowNetS BN | 1e-3          | 32         | 695        | N/A                       | N/A            |
+| Arch        | learning rate | batch size | epoch size | filename                     | validation EPE |
+| ----------- | ------------- | ---------- | ---------- | ---------------------------- | -------------- |
+| FlowNetS    | 8e-4          | 8          | 1000       | flownets_EPE1.951.pth.tar    | 1.951          |
+| FlowNetS BN | 1e-3          | 32         | 695        | flownets_bn_EPE2.459.pth.tar | 2.459          |
   
 ## Note on transform functions
 
