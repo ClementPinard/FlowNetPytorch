@@ -59,7 +59,21 @@ For further help you can type
 | ----------- | ------------- | ---------- | ---------- | ---------------------------- | -------------- |
 | FlowNetS    | 8e-4          | 8          | 1000       | flownets_EPE1.951.pth.tar    | 1.951          |
 | FlowNetS BN | 1e-3          | 32         | 695        | flownets_bn_EPE2.459.pth.tar | 2.459          |
-  
+
+*Note* : FlowNetS BN took longer to train and got worse results. It is strongly advised not to you use it for Flying Chairs dataset.
+
+## Validation samples
+
+Prediction are made by FlowNetS.
+
+Exact code for Optical Flow -> Color map can be found [here](main.py#L321)
+
+| Input | prediction | GroundTruth |
+|-------|------------|-------------|
+| <img src='images/input_1.gif' width=256> | <img src='images/pred_1.png' width=256> | <img src='images/GT_1.png' width=256> |
+| <img src='images/input_2.gif' width=256> | <img src='images/pred_2.png' width=256> | <img src='images/GT_2.png' width=256> |
+| <img src='images/input_3.gif' width=256> | <img src='images/pred_3.png' width=256> | <img src='images/GT_3.png' width=256> |
+
 ## Note on transform functions
 
 In order to have coherent transformations between inputs and target, we must define new transformations that take both input and target, as a new random variable is defined each time a random transformation is called.
