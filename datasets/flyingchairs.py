@@ -4,7 +4,7 @@ from .listdataset import ListDataset
 from .util import split2list
 
 
-def make_dataset(dir,split=None):
+def make_dataset(dir, split=None):
     '''Will search for triplets that go by the pattern '[name]_img1.ppm  [name]_img2.ppm    [name]_flow.flo' '''
     images = []
     for flow_map in glob.iglob(os.path.join(dir,'*_flow.flo')):

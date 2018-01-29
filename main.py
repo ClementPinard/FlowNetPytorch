@@ -62,6 +62,9 @@ parser.add_argument('--bias-decay', default=0, type=float,
 parser.add_argument('--multiscale-weights', '-w', default=[0.005,0.01,0.02,0.08,0.32], type=float, nargs=5,
                     help='training weight for each scale, from highest resolution (flow2) to lowest (flow6)',
                     metavar=('W2', 'W3', 'W4', 'W5', 'W6'))
+parser.add_argument('--sparse', action='store_true',
+                    help='look for NaNs in target flow when computing EPE, avoid if flow is garantied to be dense,'
+                    'automatically seleted when choosing a KITTIdataset')
 parser.add_argument('--print-freq', '-p', default=10, type=int,
                     metavar='N', help='print frequency')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
@@ -114,6 +117,8 @@ def main():
     ])
 
     if 'KITTI' in args.dataset:
+        args.sparse = True
+    if args.sparse:
         co_transform = flow_transforms.Compose([
             flow_transforms.RandomCrop((320,448)),
             flow_transforms.RandomVerticalFlip(),
@@ -222,8 +227,8 @@ def train(train_loader, model, optimizer, epoch, train_writer):
         # compute output
         output = model(input_var)
 
-        loss = multiscaleEPE(output, target_var, weights=args.multiscale_weights)
-        flow2_EPE = args.div_flow * realEPE(output[0], target_var)
+        loss = multiscaleEPE(output, target_var, weights=args.multiscale_weights, sparse=args.sparse)
+        flow2_EPE = args.div_flow * realEPE(output[0], target_var, sparse=args.sparse)
         # record loss and EPE
         losses.update(loss.data[0], target.size(0))
         train_writer.add_scalar('train_loss', loss.data[0], n_iter)
@@ -266,7 +271,7 @@ def validate(val_loader, model, epoch, output_writers):
 
         # compute output
         output = model(input_var)
-        flow2_EPE = args.div_flow*realEPE(output, target_var)
+        flow2_EPE = args.div_flow*realEPE(output, target_var, sparse=args.sparse)
         # record EPE
         flow2_EPEs.update(flow2_EPE.data[0], target.size(0))
 

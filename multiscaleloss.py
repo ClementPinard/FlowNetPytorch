@@ -2,16 +2,13 @@ import torch
 import torch.nn as nn
 
 
-def EPE(input_flow, target_flow, sparse=False, sparse_mode='zero', mean=True):
+def EPE(input_flow, target_flow, sparse=False, mean=True):
     EPE_map = torch.norm(target_flow-input_flow,2,1)
     if sparse:
-        # invalid flow is defined with either one of flow coordinate to be NaN, or both coordinates to be 0
-        if sparse_mode == 'zero':
-            mask = (target_flow[:,0] == 0) & (target_flow[:,1] == 0)
-        else:
-            mask = (target_flow[:,0] != target_flow[:,0]) | (target_flow[:,1] == target_flow[:,1])
+        # invalid flow is defined with one of flow coordinate to be NaN
+        mask = (target_flow[:,0] != target_flow[:,0]) | (target_flow[:,1] != target_flow[:,1])
 
-        EPE_map = EPE_map[~mask]
+        EPE_map = EPE_map[~mask.detach()]
     if mean:
         return EPE_map.mean()
     else:
@@ -32,7 +29,7 @@ def multiscaleEPE(network_output, target_flow, weights=None, sparse=False):
     if type(network_output) not in [tuple, list]:
         network_output = [network_output]
     if weights is None:
-        weights = [0.005,0.01,0.02,0.08,0.32]  # as in original article
+        weights = [0.005, 0.01, 0.02, 0.08, 0.32]  # as in original article
     assert(len(weights) == len(network_output))
 
     loss = 0
