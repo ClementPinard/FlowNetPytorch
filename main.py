@@ -31,8 +31,11 @@ parser.add_argument('--dataset', metavar='DATASET', default='flying_chairs',
                     choices=dataset_names,
                     help='dataset type : ' +
                     ' | '.join(dataset_names))
-parser.add_argument('-s', '--split', default=80,
-                    help='test-val split file')
+group = parser.add_mutually_exclusive_group()
+group.add_argument('-s', '--split-file', default=None, type=str,
+                   help='test-val split file')
+group.add_argument('--split-value', default=0.8, type=float,
+                   help='test-val split proportion (between 0 (only test) and 1 (only train))')
 parser.add_argument('--arch', '-a', metavar='ARCH', default='flownets',
                     choices=model_names,
                     help='model architecture: ' +
@@ -139,7 +142,7 @@ def main():
         transform=input_transform,
         target_transform=target_transform,
         co_transform=co_transform,
-        split=args.split
+        split=args.split_file if args.split_file else args.split_value
     )
     print('{} samples found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
                                                                            len(train_set),
