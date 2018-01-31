@@ -327,6 +327,7 @@ class AverageMeter(object):
 
 
 def flow2rgb(flow_map, max_value):
+    global args
     _, h, w = flow_map.shape
     rgb_map = np.ones((h,w,3)).astype(np.float32)
     normalized_flow_map = flow_map/max_value

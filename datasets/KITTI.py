@@ -5,6 +5,7 @@ from .listdataset import ListDataset
 from .util import split2list
 import cv2
 import numpy as np
+import flow_transforms
 
 '''
 Dataset routines for KITTI_flow, 2012 and 2015.
@@ -16,11 +17,11 @@ EPE are not representative in this dataset because of the sparsity of the GT.
 
 def load_flow_from_png(png_path):
     flo_file = cv2.imread(png_path,cv2.IMREAD_UNCHANGED)
-    flo_img = flo_file[:,:,1::-1].astype(np.float32)
-    invalid = (flo_file[:,:,2] == 0)
+    flo_img = flo_file[:,:,2:0:-1].astype(np.float32)
+    invalid = (flo_file[:,:,0] == 0)
     flo_img = flo_img - 32768
     flo_img = flo_img / 64
-    flo_img[invalid, :] = np.NaN
+    flo_img[invalid, :] = float('nan')
     return(flo_img)
 
 
@@ -66,6 +67,7 @@ def KITTI_noc(root, transform=None, target_transform=None,
               co_transform=None, split=80):
     train_list, test_list = make_dataset(root, split, False)
     train_dataset = ListDataset(root, train_list, transform, target_transform, co_transform, loader=KITTI_loader)
-    test_dataset = ListDataset(root, test_list, transform, target_transform, loader=KITTI_loader)
+    # All test sample are cropped to lowest possible size of KITTI images
+    test_dataset = ListDataset(root, test_list, transform, target_transform, flow_transforms.CenterCrop((370,1224)), loader=KITTI_loader)
 
     return train_dataset, test_dataset

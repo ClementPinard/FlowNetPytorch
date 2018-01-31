@@ -4,15 +4,25 @@ import torch.nn as nn
 
 def EPE(input_flow, target_flow, sparse=False, mean=True):
     EPE_map = torch.norm(target_flow-input_flow,2,1)
+    batch_size = EPE_map.size(0)
     if sparse:
         # invalid flow is defined with one of flow coordinate to be NaN
         mask = (target_flow[:,0] != target_flow[:,0]) | (target_flow[:,1] != target_flow[:,1])
 
-        EPE_map = EPE_map[~mask.detach()]
+        EPE_map = EPE_map[~mask.data]
     if mean:
         return EPE_map.mean()
     else:
-        return EPE_map.sum()/EPE_map.size(0)
+        return EPE_map.sum()/batch_size
+
+
+def sparse_max_pool(target, size):
+    input = target.clone()
+    input[(target != target).data] = 0
+    positive = (target > 0).float()
+    negative = (target < 0).float()
+    output = nn.functional.adaptive_max_pool2d(input * positive, size) - nn.functional.adaptive_max_pool2d(-input * negative, size)
+    return output
 
 
 def multiscaleEPE(network_output, target_flow, weights=None, sparse=False):
@@ -21,7 +31,7 @@ def multiscaleEPE(network_output, target_flow, weights=None, sparse=False):
         b, _, h, w = output.size()
 
         if sparse:
-            target_scaled = nn.functional.adaptive_max_pool2d(target, (h, w))
+            target_scaled = sparse_max_pool(target, (h, w))
         else:
             target_scaled = nn.functional.adaptive_avg_pool2d(target, (h, w))
         return EPE(output, target_scaled, sparse, mean=False)
