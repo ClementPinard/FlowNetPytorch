@@ -58,7 +58,8 @@ def KITTI_occ(root, transform=None, target_transform=None,
               co_transform=None, split=80):
     train_list, test_list = make_dataset(root, split, True)
     train_dataset = ListDataset(root, train_list, transform, target_transform, co_transform, loader=KITTI_loader)
-    test_dataset = ListDataset(root, test_list, transform, target_transform, loader=KITTI_loader)
+    # All test sample are cropped to lowest possible size of KITTI images
+    test_dataset = ListDataset(root, test_list, transform, target_transform, flow_transforms.CenterCrop((370,1224)), loader=KITTI_loader)
 
     return train_dataset, test_dataset
 
