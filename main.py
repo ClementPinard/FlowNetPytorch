@@ -38,7 +38,7 @@ group.add_argument('--split-value', default=0.8, type=float,
                    help='test-val split proportion (between 0 (only test) and 1 (only train))')
 parser.add_argument('--arch', '-a', metavar='ARCH', default='flownets',
                     choices=model_names,
-                    help='model architecture: ' +
+                    help='model architecture, overwritten if pretrained is specified: ' +
                     ' | '.join(model_names))
 parser.add_argument('--solver', default='adam',choices=['adam','sgd'],
                     help='solver algorithms')
@@ -57,7 +57,7 @@ parser.add_argument('--lr', '--learning-rate', default=0.0001, type=float,
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum for sgd, alpha parameter for adam')
 parser.add_argument('--beta', default=0.999, type=float, metavar='M',
-                    help='beta parameters for adam')
+                    help='beta parameter for adam')
 parser.add_argument('--weight-decay', '--wd', default=4e-4, type=float,
                     metavar='W', help='weight decay')
 parser.add_argument('--bias-decay', default=0, type=float,
@@ -78,7 +78,7 @@ parser.add_argument('--no-date', action='store_true',
                     help='don\'t append date timestamp to folder' )
 parser.add_argument('--div-flow', default=20,
                     help='value by which flow will be divided. Original value is 20 but 1 with batchNorm gives good results')
-parser.add_argument('--milestones', default=[100,150,200], nargs='*', help='epochs at which learning rate is divided by 2')
+parser.add_argument('--milestones', default=[100,150,200], metavar='N', nargs='*', help='epochs at which learning rate is divided by 2')
 
 best_EPE = -1
 n_iter = 0
@@ -156,13 +156,17 @@ def main():
 
     # create model
     if args.pretrained:
+        network_data = torch.load(args.pretrained)
+        args.arch = network_data['arch']
         print("=> using pre-trained model '{}'".format(args.arch))
     else:
+        network_data = None
         print("=> creating model '{}'".format(args.arch))
 
-    model = models.__dict__[args.arch](args.pretrained).cuda()
+    model = models.__dict__[args.arch](network_data).cuda()
     model = torch.nn.DataParallel(model).cuda()
     cudnn.benchmark = True
+
     assert(args.solver in ['adam', 'sgd'])
     print('=> setting {} solver'.format(args.solver))
     param_groups = [{'params': model.module.bias_parameters(), 'weight_decay': args.bias_decay},
@@ -202,6 +206,7 @@ def main():
             'arch': args.arch,
             'state_dict': model.module.state_dict(),
             'best_EPE': best_EPE,
+            'div_flow': args.div_flow
         }, is_best)
 
 
@@ -330,7 +335,10 @@ def flow2rgb(flow_map, max_value):
     global args
     _, h, w = flow_map.shape
     rgb_map = np.ones((h,w,3)).astype(np.float32)
-    normalized_flow_map = flow_map/max_value
+    if max_value is not None:
+        normalized_flow_map = flow_map / max_value
+    else:
+        normalized_flow_map = flow_map / (np.abs(flow_map).max())
     rgb_map[:,:,0] += normalized_flow_map[0]
     rgb_map[:,:,1] -= 0.5*(normalized_flow_map[0] + normalized_flow_map[1])
     rgb_map[:,:,2] += normalized_flow_map[1]

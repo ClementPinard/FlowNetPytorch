@@ -124,35 +124,27 @@ class FlowNetS(nn.Module):
         return [param for name, param in self.named_parameters() if 'bias' in name]
 
 
-def flownets(path=None):
+def flownets(data=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
     Args:
-        path : where to load pretrained network. will create a new one if not set
+        data : pretrained weights of the network. will create a new one if not set
     """
     model = FlowNetS(batchNorm=False)
-    if path is not None:
-        data = torch.load(path)
-        if 'state_dict' in data.keys():
-            model.load_state_dict(data['state_dict'])
-        else:
-            model.load_state_dict(data)
+    if data is not None:
+        model.load_state_dict(data['state_dict'])
     return model
 
 
-def flownets_bn(path=None):
+def flownets_bn(data=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
     Args:
-        path : where to load pretrained network. will create a new one if not set
+        data : pretrained weights of the network. will create a new one if not set
     """
     model = FlowNetS(batchNorm=True)
-    if path is not None:
-        data = torch.load(path)
-        if 'state_dict' in data.keys():
-            model.load_state_dict(data['state_dict'])
-        else:
-            model.load_state_dict(data)
+    if data is not None:
+        model.load_state_dict(data['state_dict'])
     return model
