@@ -1,10 +1,9 @@
 import torch
 import torch.nn as nn
 from torch.nn.init import kaiming_normal
-import math
 
 __all__ = [
-    'FlowNetS', 'flownets', 'flownets_bn'
+    'flownets', 'flownets_bn'
 ]
 
 

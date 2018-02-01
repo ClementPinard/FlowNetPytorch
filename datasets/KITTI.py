@@ -21,7 +21,8 @@ def load_flow_from_png(png_path):
     invalid = (flo_file[:,:,0] == 0)
     flo_img = flo_img - 32768
     flo_img = flo_img / 64
-    flo_img[invalid, :] = float('nan')
+    flo_img[np.abs(flo_img) < 1e-10] = 1e-10
+    flo_img[invalid, :] = 0
     return(flo_img)
 
 

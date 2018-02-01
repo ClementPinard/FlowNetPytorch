@@ -6,8 +6,8 @@ def EPE(input_flow, target_flow, sparse=False, mean=True):
     EPE_map = torch.norm(target_flow-input_flow,2,1)
     batch_size = EPE_map.size(0)
     if sparse:
-        # invalid flow is defined with one of flow coordinate to be NaN
-        mask = (target_flow[:,0] != target_flow[:,0]) | (target_flow[:,1] != target_flow[:,1])
+        # invalid flow is defined with both flow coordinates to be exactly 0
+        mask = (target_flow[:,0] == 0) & (target_flow[:,1] == 0)
 
         EPE_map = EPE_map[~mask.data]
     if mean:
@@ -16,11 +16,9 @@ def EPE(input_flow, target_flow, sparse=False, mean=True):
         return EPE_map.sum()/batch_size
 
 
-def sparse_max_pool(target, size):
-    input = target.clone()
-    input[(target != target).data] = 0
-    positive = (target > 0).float()
-    negative = (target < 0).float()
+def sparse_max_pool(input, size):
+    positive = (input > 0).float()
+    negative = (input < 0).float()
     output = nn.functional.adaptive_max_pool2d(input * positive, size) - nn.functional.adaptive_max_pool2d(-input * negative, size)
     return output
 
