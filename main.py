@@ -234,6 +234,11 @@ def train(train_loader, model, optimizer, epoch, train_writer):
 
         # compute output
         output = model(input_var)
+        if args.sparse:
+            # Since Target pooling is not very precise when sparse,
+            # take the highest resolution prediction and upsample it instead of downsampling target
+            h, w = target_var.size()[-2:]
+            output = [torch.nn.functional.upsample(output[0], (h,w)), *output[1:]]
 
         loss = multiscaleEPE(output, target_var, weights=args.multiscale_weights, sparse=args.sparse)
         flow2_EPE = args.div_flow * realEPE(output[0], target_var, sparse=args.sparse)
