@@ -56,7 +56,7 @@ def KITTI_loader(root,path_imgs, path_flo):
 
 
 def KITTI_occ(root, transform=None, target_transform=None,
-              co_transform=None, split=80):
+              co_transform=None, split=None):
     train_list, test_list = make_dataset(root, split, True)
     train_dataset = ListDataset(root, train_list, transform, target_transform, co_transform, loader=KITTI_loader)
     # All test sample are cropped to lowest possible size of KITTI images
@@ -66,7 +66,7 @@ def KITTI_occ(root, transform=None, target_transform=None,
 
 
 def KITTI_noc(root, transform=None, target_transform=None,
-              co_transform=None, split=80):
+              co_transform=None, split=None):
     train_list, test_list = make_dataset(root, split, False)
     train_dataset = ListDataset(root, train_list, transform, target_transform, co_transform, loader=KITTI_loader)
     # All test sample are cropped to lowest possible size of KITTI images

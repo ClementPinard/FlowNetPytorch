@@ -20,7 +20,7 @@ def make_dataset(dir, split, dataset_type='clean'):
     assert(os.path.isdir(os.path.join(training_dir,img_dir)))
 
     images = []
-    for flow_map in glob.iglob(os.path.join(dir,flow_dir,'*','*.flo')):
+    for flow_map in sorted(glob.glob(os.path.join(dir,flow_dir,'*','*.flo'))):
         flow_map = os.path.relpath(flow_map,os.path.join(dir,flow_dir))
         root_filename = flow_map[:-8]
         frame_nb = int(flow_map[-8:-4])
@@ -35,7 +35,7 @@ def make_dataset(dir, split, dataset_type='clean'):
 
 
 def mpi_sintel_clean(root, transform=None, target_transform=None,
-                     co_transform=None, split=80):
+                     co_transform=None, split=None):
     train_list, test_list = make_dataset(root, split, 'clean')
     train_dataset = ListDataset(root, train_list, transform, target_transform, co_transform)
     test_dataset = ListDataset(root, test_list, transform, target_transform, flow_transforms.CenterCrop((384,1024)))
@@ -44,7 +44,7 @@ def mpi_sintel_clean(root, transform=None, target_transform=None,
 
 
 def mpi_sintel_final(root, transform=None, target_transform=None,
-                     co_transform=None, split=80):
+                     co_transform=None, split=None):
     train_list, test_list = make_dataset(root, split, 'final')
     train_dataset = ListDataset(root, train_list, transform, target_transform, co_transform)
     test_dataset = ListDataset(root, test_list, transform, target_transform, flow_transforms.CenterCrop((384,1024)))
@@ -53,7 +53,7 @@ def mpi_sintel_final(root, transform=None, target_transform=None,
 
 
 def mpi_sintel_both(root, transform=None, target_transform=None,
-                    co_transform=None, split=80):
+                    co_transform=None, split=None):
     '''load images from both clean and final folders.
     We cannot shuffle input, because it would very likely cause data snooping
     for the clean and final frames are not that different'''
