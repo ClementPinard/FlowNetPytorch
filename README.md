@@ -57,7 +57,7 @@ For further help you can type
 
 | Arch        | learning rate | batch size | epoch size | filename                     | validation EPE |
 | ----------- | ------------- | ---------- | ---------- | ---------------------------- | -------------- |
-| FlowNetS    | 8e-4          | 8          | 1000       | flownets_EPE1.951.pth.tar    | 1.951          |
+| FlowNetS    | 1e-4          | 8          | 2700       | flownets_EPE1.951.pth.tar    | 1.951          |
 | FlowNetS BN | 1e-3          | 32         | 695        | flownets_bn_EPE2.459.pth.tar | 2.459          |
 
 *Note* : FlowNetS BN took longer to train and got worse results. It is strongly advised not to you use it for Flying Chairs dataset.
