@@ -59,6 +59,8 @@ def mpi_sintel_both(root, transform=None, target_transform=None,
     '''load images from both clean and final folders.
     We cannot shuffle input, because it would very likely cause data snooping
     for the clean and final frames are not that different'''
+    assert(isinstance(split, str)), 'To avoid data snooping, you must provide a static list of train/val when dealing with both clean and final.'
+    ' Look at Sintel_train_val.txt for an example'
     train_list1, test_list1 = make_dataset(root, split, 'clean')
     train_list2, test_list2 = make_dataset(root, split, 'final')
     train_dataset = ListDataset(root, train_list1 + train_list2, transform, target_transform, co_transform)
