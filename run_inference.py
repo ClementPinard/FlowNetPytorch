@@ -23,10 +23,10 @@ parser.add_argument('data', metavar='DIR',
 parser.add_argument('pretrained', metavar='PTH', help='path to pre-trained model')
 parser.add_argument('--output', metavar='DIR', default=None,
                     help='path to output folder. If not set, will be created in data folder')
-parser.add_argument('--div-flow', default=20,
+parser.add_argument('--div-flow', default=20, type=float,
                     help='value by which flow will be divided. overwritten if stored in pretrained file')
 parser.add_argument("--img-exts", default=['png', 'jpg', 'bmp'], nargs='*', type=str, help="images extensions to glob")
-parser.add_argument('--max_flow', default=None,
+parser.add_argument('--max_flow', default=None, type=float,
                     help='max flow value. Flow map color is saturated above this value. If not set, will use flow map\'s max value')
 
 best_EPE = -1
