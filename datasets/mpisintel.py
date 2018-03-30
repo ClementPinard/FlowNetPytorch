@@ -12,22 +12,24 @@ The dataset is not very big, you might want to only pretrain on it for flownet
 '''
 
 
-def make_dataset(dir, split, dataset_type='clean'):
-    training_dir = os.path.join(dir,'training')
+def make_dataset(dataset_dir, split, dataset_type='clean'):
     flow_dir = 'flow'
-    assert(os.path.isdir(os.path.join(training_dir,flow_dir)))
+    assert(os.path.isdir(os.path.join(dataset_dir,flow_dir)))
     img_dir = dataset_type
-    assert(os.path.isdir(os.path.join(training_dir,img_dir)))
+    assert(os.path.isdir(os.path.join(dataset_dir,img_dir)))
 
     images = []
-    for flow_map in sorted(glob.glob(os.path.join(dir,flow_dir,'*','*.flo'))):
-        flow_map = os.path.relpath(flow_map,os.path.join(dir,flow_dir))
-        root_filename = flow_map[:-8]
-        frame_nb = int(flow_map[-8:-4])
-        img1 = os.path.join(img_dir,root_filename+str(frame_nb).zfill(4)+'.png')
-        img2 = os.path.join(img_dir,root_filename+str(frame_nb+1).zfill(4)+'.png')
+    for flow_map in sorted(glob.glob(os.path.join(dataset_dir,flow_dir,'*','*.flo'))):
+        flow_map = os.path.relpath(flow_map,os.path.join(dataset_dir,flow_dir))
+
+        scene_dir, filename = os.path.split(flow_map)
+        no_ext_filename = os.path.splitext(filename)[0]
+        prefix, frame_nb = no_ext_filename.split('_')
+        frame_nb = int(frame_nb)
+        img1 = os.path.join(img_dir, scene_dir, '{}_{:04d}.png'.format(prefix, frame_nb))
+        img2 = os.path.join(img_dir, scene_dir, '{}_{:04d}.png'.format(prefix, frame_nb + 1))
         flow_map = os.path.join(flow_dir,flow_map)
-        if not (os.path.isfile(os.path.join(dir,img1)) or os.path.isfile(os.path.join(dir,img2))):
+        if not (os.path.isfile(os.path.join(dataset_dir,img1)) or os.path.isfile(os.path.join(dataset_dir,img2))):
             continue
         images.append([[img1,img2],flow_map])
 
