@@ -28,8 +28,8 @@ parser.add_argument('--div-flow', default=20, type=float,
 parser.add_argument("--img-exts", default=['png', 'jpg', 'bmp'], nargs='*', type=str, help="images extensions to glob")
 parser.add_argument('--max_flow', default=None, type=float,
                     help='max flow value. Flow map color is saturated above this value. If not set, will use flow map\'s max value')
-parser.add_argument('--no-resize', action='store_true', help='if set, will output FlowNet raw input, which is 4 times downsampled.'
-                    'if not set, will output full resolution flow map, with bilinear upsampling')
+parser.add_argument('--upsampling', '-u', choices=['nearest', 'bilinear'], default=None, help='if not set, will output FlowNet raw input,'
+                    'which is 4 times downsampled. If set, will output full resolution flow map, with selected upsampling')
 parser.add_argument('--bidirectional', action='store_true', help='if set, will output invert flow (from 1 to 0) along with regular flow')
 
 
@@ -81,8 +81,8 @@ def main():
 
         # compute output
         output = model(input_var)
-        if not args.no_resize:
-            output = torch.nn.functional.upsample(output, size=img1.size()[-2:], mode='bilinear')
+        if args.upsampling is not None:
+            output = torch.nn.functional.upsample(output, size=img1.size()[-2:], mode=args.upsampling)
         for suffix, flow_output in zip(['flow', 'inv_flow'], output.data.cpu()):
             rgb_flow = flow2rgb(args.div_flow * flow_output.numpy(), max_value=args.max_flow)
             to_save = (rgb_flow * 255).astype(np.uint8)
