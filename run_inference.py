@@ -28,13 +28,13 @@ parser.add_argument('--div-flow', default=20, type=float,
 parser.add_argument("--img-exts", default=['png', 'jpg', 'bmp'], nargs='*', type=str, help="images extensions to glob")
 parser.add_argument('--max_flow', default=None, type=float,
                     help='max flow value. Flow map color is saturated above this value. If not set, will use flow map\'s max value')
-
-best_EPE = -1
-n_iter = 0
+parser.add_argument('--no-resize', action='store_true', help='if set, will output FlowNet raw input, which is 4 times downsampled.'
+                    'if not set, will output full resolution flow map, with bilinear upsampling')
+parser.add_argument('--bidirectional', action='store_true', help='if set, will output invert flow (from 1 to 0) along with regular flow')
 
 
 def main():
-    global args, best_EPE, save_path
+    global args, save_path
     args = parser.parse_args()
     data_dir = Path(args.data)
     print("=> fetching img pairs in '{}'".format(args.data))
@@ -72,13 +72,21 @@ def main():
 
         img1 = input_transform(imread(img1_file))
         img2 = input_transform(imread(img2_file))
-        input_var = torch.autograd.Variable(torch.cat([img1, img2],0).cuda(), volatile=True).unsqueeze(0)
+        input_var = torch.autograd.Variable(torch.cat([img1, img2]).cuda(), volatile=True).unsqueeze(0)
+
+        if args.bidirectional:
+            # feed inverted pair along with normal pair
+            inverted_input_var = torch.autograd.Variable(torch.cat([img2, img1],0).cuda(), volatile=True).unsqueeze(0)
+            input_var = torch.cat([input_var, inverted_input_var])
 
         # compute output
         output = model(input_var)
-        rgb_flow = flow2rgb(args.div_flow * output.data[0].cpu().numpy(), max_value=args.max_flow)
-        to_save = (rgb_flow * 255).astype(np.uint8)
-        imsave(save_path/(img1_file.namebase[:-2] + '_flow.png'), to_save)
+        if not args.no_resize:
+            output = torch.nn.functional.upsample(output, size=img1.size()[-2:], mode='bilinear')
+        for suffix, flow_output in zip(['flow', 'inv_flow'], output.data.cpu()):
+            rgb_flow = flow2rgb(args.div_flow * flow_output.numpy(), max_value=args.max_flow)
+            to_save = (rgb_flow * 255).astype(np.uint8)
+            imsave(save_path/'{}{}.png'.format(img1_file.namebase[:-1], suffix), to_save)
 
 
 if __name__ == '__main__':
