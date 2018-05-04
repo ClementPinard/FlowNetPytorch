@@ -12,7 +12,7 @@ def make_dataset(dir, split=None):
         root_filename = flow_map[:-9]
         img1 = root_filename+'_img1.ppm'
         img2 = root_filename+'_img2.ppm'
-        if not (os.path.isfile(os.path.join(dir,img1)) or os.path.isfile(os.path.join(dir,img2))):
+        if not (os.path.isfile(os.path.join(dir,img1)) and os.path.isfile(os.path.join(dir,img2))):
             continue
 
         images.append([[img1,img2],flow_map])
