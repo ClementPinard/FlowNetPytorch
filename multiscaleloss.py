@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 def EPE(input_flow, target_flow, sparse=False, mean=True):
-    EPE_map = torch.norm(target_flow-input_flow,2,1)
+    EPE_map = torch.norm(target_flow-input_flow,2,2)
     batch_size = EPE_map.size(0)
     if sparse:
         # invalid flow is defined with both flow coordinates to be exactly 0
