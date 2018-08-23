@@ -1,24 +1,26 @@
 import torch
 import torch.nn as nn
 from torch.nn.init import kaiming_normal_, constant_
-from .util import conv, predict_flow, deconv, crop_like
+from .util import conv, predict_flow, deconv, crop_like, correlate
 
 __all__ = [
-    'flownets', 'flownets_bn'
+    'flownetc', 'flownetc_bn'
 ]
 
 
-class FlowNetS(nn.Module):
+class FlowNetC(nn.Module):
     expansion = 1
 
     def __init__(self,batchNorm=True):
-        super(FlowNetS,self).__init__()
+        super(FlowNetC,self).__init__()
 
         self.batchNorm = batchNorm
-        self.conv1   = conv(self.batchNorm,   6,   64, kernel_size=7, stride=2)
-        self.conv2   = conv(self.batchNorm,  64,  128, kernel_size=5, stride=2)
-        self.conv3   = conv(self.batchNorm, 128,  256, kernel_size=5, stride=2)
-        self.conv3_1 = conv(self.batchNorm, 256,  256)
+        self.conv1      = conv(self.batchNorm,   3,   64, kernel_size=7, stride=2)
+        self.conv2      = conv(self.batchNorm,  64,  128, kernel_size=5, stride=2)
+        self.conv3      = conv(self.batchNorm, 128,  256, kernel_size=5, stride=2)
+        self.conv_redir = conv(self.batchNorm, 256,   32, kernel_size=1, stride=1)
+
+        self.conv3_1 = conv(self.batchNorm, 473,  256)
         self.conv4   = conv(self.batchNorm, 256,  512, stride=2)
         self.conv4_1 = conv(self.batchNorm, 512,  512)
         self.conv5   = conv(self.batchNorm, 512,  512, stride=2)
@@ -52,8 +54,23 @@ class FlowNetS(nn.Module):
                 constant_(m.bias, 0)
 
     def forward(self, x):
-        out_conv2 = self.conv2(self.conv1(x))
-        out_conv3 = self.conv3_1(self.conv3(out_conv2))
+        x1 = x[:,:3]
+        x2 = x[:,3:]
+
+        out_conv1a = self.conv1(x1)
+        out_conv2a = self.conv2(out_conv1a)
+        out_conv3a = self.conv3(out_conv2a)
+
+        out_conv1b = self.conv1(x2)
+        out_conv2b = self.conv2(out_conv1b)
+        out_conv3b = self.conv3(out_conv2b)
+
+        out_conv_redir = self.conv_redir(out_conv3a)
+        out_correlation = correlate(out_conv3a,out_conv3b)
+
+        in_conv3_1 = torch.cat([out_conv_redir, out_correlation], dim=1)
+
+        out_conv3 = self.conv3_1(in_conv3_1)
         out_conv4 = self.conv4_1(self.conv4(out_conv3))
         out_conv5 = self.conv5_1(self.conv5(out_conv4))
         out_conv6 = self.conv6_1(self.conv6(out_conv5))
@@ -74,10 +91,10 @@ class FlowNetS(nn.Module):
 
         concat3 = torch.cat((out_conv3,out_deconv3,flow4_up),1)
         flow3       = self.predict_flow3(concat3)
-        flow3_up    = crop_like(self.upsampled_flow3_to_2(flow3), out_conv2)
-        out_deconv2 = crop_like(self.deconv2(concat3), out_conv2)
+        flow3_up    = crop_like(self.upsampled_flow3_to_2(flow3), out_conv2a)
+        out_deconv2 = crop_like(self.deconv2(concat3), out_conv2a)
 
-        concat2 = torch.cat((out_conv2,out_deconv2,flow3_up),1)
+        concat2 = torch.cat((out_conv2a,out_deconv2,flow3_up),1)
         flow2 = self.predict_flow2(concat2)
 
         if self.training:
@@ -92,27 +109,27 @@ class FlowNetS(nn.Module):
         return [param for name, param in self.named_parameters() if 'bias' in name]
 
 
-def flownets(data=None):
+def flownetc(data=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
     Args:
         data : pretrained weights of the network. will create a new one if not set
     """
-    model = FlowNetS(batchNorm=False)
+    model = FlowNetC(batchNorm=False)
     if data is not None:
         model.load_state_dict(data['state_dict'])
     return model
 
 
-def flownets_bn(data=None):
+def flownetc_bn(data=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
     Args:
         data : pretrained weights of the network. will create a new one if not set
     """
-    model = FlowNetS(batchNorm=True)
+    model = FlowNetC(batchNorm=True)
     if data is not None:
         model.load_state_dict(data['state_dict'])
     return model

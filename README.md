@@ -12,8 +12,8 @@ Two neural network models are currently provided :
 
  - **FlowNetS**
  - **FlowNetSBN**
-
-There is currently no implementation of FlowNetC as a specific Correlation layer module would need to be written (feel free to contribute !)
+ - **FlowNetC**
+ - **FlowNetCBN**
 
 ## Pretrained Models
 Thanks to [Kaixhin](https://github.com/Kaixhin) you can download a pretrained version of FlowNetS (from caffe, not from pytorch) [here](https://drive.google.com/open?id=0B5EC7HMbyk3CbjFPb0RuODI3NmM). This folder also contains trained networks from scratch.
@@ -22,13 +22,13 @@ Thanks to [Kaixhin](https://github.com/Kaixhin) you can download a pretrained ve
 Directly feed the downloaded Network to the script, you don't need to uncompress it even if your desktop environment tells you so.
 
 ### Note on networks from caffe
-These networks expect a BGR input in range [-0.5,0.5] (compared to RGB in pytorch). However, BGR order is not very important.
+These networks expect a BGR input in range `[-0.5,0.5]` (compared to RGB in pytorch). However, BGR order is not very important.
 
 ## Prerequisite
 
-	pytorch >= 0.3
+	pytorch >= 0.4.1
 	tensorboard-pytorch
-	tensorboardX
+	tensorboardX >= 1.4
 	scipy
 	argparse
 

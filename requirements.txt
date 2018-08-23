@@ -1,0 +1,7 @@
+torch>=0.4.1
+torchvision
+numpy
+spatial-correlation-sampler
+tensorboardX>=1.4
+imageio
+argparse
