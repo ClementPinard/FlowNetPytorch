@@ -26,11 +26,14 @@ These networks expect a BGR input in range `[-0.5,0.5]` (compared to RGB in pyto
 
 ## Prerequisite
 
-	pytorch >= 0.4.1
-	tensorboard-pytorch
-	tensorboardX >= 1.4
-	scipy
-	argparse
+```
+pytorch >= 0.4.1
+tensorboard-pytorch
+tensorboardX >= 1.4
+spatial-correlation-sampler>=0.0.8
+imageio
+argparse
+```
 
 ## Training on Flying Chair Dataset
 
@@ -38,20 +41,26 @@ First, you need to download the [the flying chair dataset](http://lmb.informatik
 
 Default HyperParameters provided in `main.py` are the same as in the caffe training scripts.
 
-Example usage for FlowNetS :
+* Example usage for FlowNetS :
 
-     python main.py /path/to/flying_chairs/ -b8 -j8 -a flownets
+```bash
+python main.py /path/to/flying_chairs/ -b8 -j8 -a flownets
+```
 
 We recommend you set j (number of data threads) to high if you use DataAugmentation as to avoid data loading to slow the training.
 
 For further help you can type
 
-	python main.py -h
+```bash
+python main.py -h
+```
 
 ## Visualizing training
 [Tensorboard-pytorch](https://github.com/lanpa/tensorboard-pytorch) is used for logging. To visualize result, simply type
 
-	tensorboard --logdir=/path/to/checkoints
+```bash
+tensorboard --logdir=/path/to/checkoints
+```
 	
 ## Training results
 
