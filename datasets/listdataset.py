@@ -1,7 +1,7 @@
 import torch.utils.data as data
 import os
 import os.path
-from scipy.ndimage import imread
+from imageio import imread
 import numpy as np
 
 
