@@ -75,12 +75,12 @@ class FlowNetS(nn.Module):
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-                kaiming_normal(m.weight.data)
+                kaiming_normal_(m.weight, 0.1)
                 if m.bias is not None:
-                    m.bias.data.zero_()
+                    constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
+                constant_(m.weight, 1)
+                constant_(m.bias, 0)
 
     def forward(self, x):
         out_conv2 = self.conv2(self.conv1(x))

@@ -4,6 +4,7 @@ import shutil
 import time
 
 import torch
+import torch.nn.functional as F
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim
@@ -19,7 +20,6 @@ import numpy as np
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__"))
-
 dataset_names = sorted(name for name in datasets.__all__)
 
 
@@ -82,6 +82,7 @@ parser.add_argument('--milestones', default=[100,150,200], metavar='N', nargs='*
 
 best_EPE = -1
 n_iter = 0
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def main():
@@ -193,7 +194,8 @@ def main():
 
         # evaluate on validation set
 
-        EPE = validate(val_loader, model, epoch, output_writers)
+        with torch.no_grad():
+            EPE = validate(val_loader, model, epoch, output_writers)
         test_writer.add_scalar('mean EPE', EPE, epoch)
 
         if best_EPE < 0:
@@ -227,25 +229,23 @@ def train(train_loader, model, optimizer, epoch, train_writer):
     for i, (input, target) in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
-        target = target.cuda(async=True)
-        input = [j.cuda() for j in input]
-        input_var = torch.autograd.Variable(torch.cat(input,1))
-        target_var = torch.autograd.Variable(target)
+        target = target.to(device)
+        input = torch.cat(input,1).to(device)
 
         # compute output
-        output = model(input_var)
+        output = model(input)
         if args.sparse:
             # Since Target pooling is not very precise when sparse,
             # take the highest resolution prediction and upsample it instead of downsampling target
-            h, w = target_var.size()[-2:]
-            output = [torch.nn.functional.upsample(output[0], (h,w)), *output[1:]]
+            h, w = target.size()[-2:]
+            output = [F.interpolate(output[0], (h,w)), *output[1:]]
 
-        loss = multiscaleEPE(output, target_var, weights=args.multiscale_weights, sparse=args.sparse)
-        flow2_EPE = args.div_flow * realEPE(output[0], target_var, sparse=args.sparse)
+        loss = multiscaleEPE(output, target, weights=args.multiscale_weights, sparse=args.sparse)
+        flow2_EPE = args.div_flow * realEPE(output[0], target, sparse=args.sparse)
         # record loss and EPE
-        losses.update(loss.data[0], target.size(0))
-        train_writer.add_scalar('train_loss', loss.data[0], n_iter)
-        flow2_EPEs.update(flow2_EPE.data[0], target.size(0))
+        losses.update(loss.item(), target.size(0))
+        train_writer.add_scalar('train_loss', loss.item(), n_iter)
+        flow2_EPEs.update(flow2_EPE.item(), target.size(0))
 
         # compute gradient and do optimization step
         optimizer.zero_grad()
@@ -278,15 +278,14 @@ def validate(val_loader, model, epoch, output_writers):
 
     end = time.time()
     for i, (input, target) in enumerate(val_loader):
-        target = target.cuda(async=True)
-        input_var = torch.autograd.Variable(torch.cat(input,1).cuda(), volatile=True)
-        target_var = torch.autograd.Variable(target, volatile=True)
+        target = target.to(device)
+        input = torch.cat(input,1).to(device)
 
         # compute output
-        output = model(input_var)
-        flow2_EPE = args.div_flow*realEPE(output, target_var, sparse=args.sparse)
+        output = model(input)
+        flow2_EPE = args.div_flow*realEPE(output, target, sparse=args.sparse)
         # record EPE
-        flow2_EPEs.update(flow2_EPE.data[0], target.size(0))
+        flow2_EPEs.update(flow2_EPE.item(), target.size(0))
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -294,10 +293,11 @@ def validate(val_loader, model, epoch, output_writers):
 
         if i < len(output_writers):  # log first output of first batches
             if epoch == 0:
-                output_writers[i].add_image('GroundTruth', flow2rgb(args.div_flow * target[0].cpu().numpy(), max_value=10), 0)
-                output_writers[i].add_image('Inputs', input[0][0].numpy().transpose(1, 2, 0) + np.array([0.411,0.432,0.45]), 0)
-                output_writers[i].add_image('Inputs', input[1][0].numpy().transpose(1, 2, 0) + np.array([0.411,0.432,0.45]), 1)
-            output_writers[i].add_image('FlowNet Outputs', flow2rgb(args.div_flow * output.data[0].cpu().numpy(), max_value=10), epoch)
+                mean_values = torch.tensor([0.411,0.432,0.45], dtype=input.dtype).view(3,1,1)
+                output_writers[i].add_image('GroundTruth', flow2rgb(args.div_flow * target[0], max_value=10), 0)
+                output_writers[i].add_image('Inputs', (input[0,:3].cpu() + mean_values).clamp(0,1), 0)
+                output_writers[i].add_image('Inputs', (input[0,3:].cpu() + mean_values).clamp(0,1), 1)
+            output_writers[i].add_image('FlowNet Outputs', flow2rgb(args.div_flow * output[0], max_value=10), epoch)
 
         if i % args.print_freq == 0:
             print('Test: [{0}/{1}]\t Time {2}\t EPE {3}'
@@ -337,17 +337,17 @@ class AverageMeter(object):
 
 
 def flow2rgb(flow_map, max_value):
-    global args
-    _, h, w = flow_map.shape
-    flow_map[:,(flow_map[0] == 0) & (flow_map[1] == 0)] = float('nan')
-    rgb_map = np.ones((h,w,3)).astype(np.float32)
+    flow_map_np = flow_map.detach().cpu().numpy()
+    _, h, w = flow_map_np.shape
+    flow_map_np[:,(flow_map_np[0] == 0) & (flow_map_np[1] == 0)] = float('nan')
+    rgb_map = np.ones((3,h,w)).astype(np.float32)
     if max_value is not None:
-        normalized_flow_map = flow_map / max_value
+        normalized_flow_map = flow_map_np / max_value
     else:
-        normalized_flow_map = flow_map / (np.abs(flow_map).max())
-    rgb_map[:,:,0] += normalized_flow_map[0]
-    rgb_map[:,:,1] -= 0.5*(normalized_flow_map[0] + normalized_flow_map[1])
-    rgb_map[:,:,2] += normalized_flow_map[1]
+        normalized_flow_map = flow_map_np / (np.abs(flow_map_np).max())
+    rgb_map[0] += normalized_flow_map[0]
+    rgb_map[1] -= 0.5*(normalized_flow_map[0] + normalized_flow_map[1])
+    rgb_map[2] += normalized_flow_map[1]
     return rgb_map.clip(0,1)
 
 
