@@ -72,7 +72,8 @@ def main():
 
         img1 = input_transform(imread(img1_file))
         img2 = input_transform(imread(img2_file))
-        input_var = torch.autograd.Variable(torch.cat([img1, img2]).cuda(), volatile=True).unsqueeze(0)
+        with torch.no_grad():
+            input_var = torch.tensor(torch.cat([img1, img2]).cuda()).unsqueeze(0)
 
         if args.bidirectional:
             # feed inverted pair along with normal pair
