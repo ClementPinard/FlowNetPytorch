@@ -72,6 +72,7 @@ tensorboard --logdir=/path/to/checkoints
 | ----------- | ------------- | ---------- | ---------- | ---------------------------- | -------------- |
 | FlowNetS    | 1e-4          | 8          | 2700       | flownets_EPE1.951.pth.tar    | 1.951          |
 | FlowNetS BN | 1e-3          | 32         | 695        | flownets_bn_EPE2.459.pth.tar | 2.459          |
+| FlowNetC    | 1e-4          | 8          | 2700       | flownetc_EPE1.766.pth.tar    | 1.766          |
 
 *Note* : FlowNetS BN took longer to train and got worse results. It is strongly advised not to you use it for Flying Chairs dataset.
 
