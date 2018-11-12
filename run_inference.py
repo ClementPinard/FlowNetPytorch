@@ -3,6 +3,7 @@ from path import Path
 
 import torch
 import torch.backends.cudnn as cudnn
+import torch.nn.functional as F
 import models
 from tqdm import tqdm
 import torchvision.transforms as transforms
@@ -32,13 +33,19 @@ parser.add_argument('--upsampling', '-u', choices=['nearest', 'bilinear'], defau
                     'which is 4 times downsampled. If set, will output full resolution flow map, with selected upsampling')
 parser.add_argument('--bidirectional', action='store_true', help='if set, will output invert flow (from 1 to 0) along with regular flow')
 
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+
 @torch.no_grad()
 def main():
     global args, save_path
     args = parser.parse_args()
     data_dir = Path(args.data)
     print("=> fetching img pairs in '{}'".format(args.data))
-    save_path = data_dir/'flow'
+    if args.output is None:
+        save_path = data_dir/'flow'
+    else:
+        save_path = Path(args.output)
     print('=> will save everything to {}'.format(save_path))
     save_path.makedirs_p()
 
@@ -61,7 +68,7 @@ def main():
     # create model
     network_data = torch.load(args.pretrained)
     print("=> using pre-trained model '{}'".format(network_data['arch']))
-    model = models.__dict__[network_data['arch']](network_data).cuda()
+    model = models.__dict__[network_data['arch']](network_data).to(device)
     model.eval()
     cudnn.benchmark = True
 
@@ -72,19 +79,20 @@ def main():
 
         img1 = input_transform(imread(img1_file))
         img2 = input_transform(imread(img2_file))
-        input_var = torch.tensor(torch.cat([img1, img2]).cuda()).unsqueeze(0)
+        input_var = torch.cat([img1, img2]).unsqueeze(0)
 
         if args.bidirectional:
             # feed inverted pair along with normal pair
-            inverted_input_var = torch.tensor(torch.cat([img2, img1],0).cuda()).unsqueeze(0)
+            inverted_input_var = torch.cat([img2, img1]).unsqueeze(0)
             input_var = torch.cat([input_var, inverted_input_var])
 
+        input_var = input_var.to(device)
         # compute output
         output = model(input_var)
         if args.upsampling is not None:
-            output = torch.nn.functional.upsample(output, size=img1.size()[-2:], mode=args.upsampling)
-        for suffix, flow_output in zip(['flow', 'inv_flow'], output.data.cpu()):
-            rgb_flow = flow2rgb(args.div_flow * flow_output.numpy(), max_value=args.max_flow)
+            output = F.interpolate(output, size=img1.size()[-2:], mode=args.upsampling, align_corners=False)
+        for suffix, flow_output in zip(['flow', 'inv_flow'], output):
+            rgb_flow = flow2rgb(args.div_flow * flow_output, max_value=args.max_flow)
             to_save = (rgb_flow * 255).astype(np.uint8).transpose(1,2,0)
             imsave(save_path/'{}{}.png'.format(img1_file.namebase[:-1], suffix), to_save)
 
