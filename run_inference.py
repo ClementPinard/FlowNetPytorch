@@ -24,7 +24,7 @@ parser.add_argument('data', metavar='DIR',
 parser.add_argument('pretrained', metavar='PTH', help='path to pre-trained model')
 parser.add_argument('--output', '-o', metavar='DIR', default=None,
                     help='path to output folder. If not set, will be created in data folder')
-parser.add_argument('--output-value', '-v', metavar='VAL', choices=['raw', 'vis', 'both'], default='both',
+parser.add_argument('--output-value', '-v', choices=['raw', 'vis', 'both'], default='both',
                     help='which value to output, between raw input (as a npy file) and color vizualisation (as an image file).'
                     ' If not set, will output both')
 parser.add_argument('--div-flow', default=20, type=float,
@@ -60,7 +60,6 @@ def main():
         save_path = Path(args.output)
     print('=> will save everything to {}'.format(save_path))
     save_path.makedirs_p()
-
     # Data loading code
     input_transform = transforms.Compose([
         flow_transforms.ArrayToTensor(),
