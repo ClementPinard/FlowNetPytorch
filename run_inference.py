@@ -109,7 +109,9 @@ def main():
                 to_save = (rgb_flow * 255).astype(np.uint8).transpose(1,2,0)
                 imwrite(filename + '.png', to_save)
             if args.output_value in ['raw', 'both']:
-                np.save(filename + 'npy', flow_output.cpu().numpy())
+                # Make the flow map a HxWx2 array as in .flo files
+                to_save = flow_output.cpu().numpy().transpose(1,2,0)
+                np.save(filename + '.npy', to_save)
 
 
 if __name__ == '__main__':
