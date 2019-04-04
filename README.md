@@ -8,7 +8,7 @@ It has not been tested for multiple GPU, but it should work just as in original 
 
 The code provides a training example, using [the flying chair dataset](http://lmb.informatik.uni-freiburg.de/resources/datasets/FlyingChairs.en.html) , with data augmentation. An implementation for [Scene Flow Datasets](http://lmb.informatik.uni-freiburg.de/resources/datasets/SceneFlowDatasets.en.html) may be added in the future.
 
-Two neural network models are currently provided :
+Two neural network models are currently provided, along with their batch norm variation (experimental) :
 
  - **FlowNetS**
  - **FlowNetSBN**
@@ -22,12 +22,12 @@ Thanks to [Kaixhin](https://github.com/Kaixhin) you can download a pretrained ve
 Directly feed the downloaded Network to the script, you don't need to uncompress it even if your desktop environment tells you so.
 
 ### Note on networks from caffe
-These networks expect a BGR input in range `[-0.5,0.5]` (compared to RGB in pytorch). However, BGR order is not very important.
+These networks expect a BGR input (compared to RGB in pytorch). However, BGR order is not very important.
 
 ## Prerequisite
 
 ```
-pytorch >= 0.4.1
+pytorch >= 1.0.1
 tensorboard-pytorch
 tensorboardX >= 1.4
 spatial-correlation-sampler>=0.0.8
@@ -87,6 +87,22 @@ Exact code for Optical Flow -> Color map can be found [here](main.py#L321)
 | <img src='images/input_1.gif' width=256> | <img src='images/pred_1.png' width=256> | <img src='images/GT_1.png' width=256> |
 | <img src='images/input_2.gif' width=256> | <img src='images/pred_2.png' width=256> | <img src='images/GT_2.png' width=256> |
 | <img src='images/input_3.gif' width=256> | <img src='images/pred_3.png' width=256> | <img src='images/GT_3.png' width=256> |
+
+## Running inference on a set of image pairs
+
+If you need to run the network on your images, you can download a pretrained network [here](https://drive.google.com/open?id=0B5EC7HMbyk3CbjFPb0RuODI3NmM) and launch the inference script on your folder of image pairs.
+
+Your folder needs to have all the images pairs in the same location, with the name pattern
+```
+{image_name}1.{ext}
+{image_name}2.{ext}
+```
+
+```bash
+python3 run_inference.py /path/to/images/folder /path/to/pretrained
+```
+
+As for the `main.py` script, a help menu is available for additional options.
 
 ## Note on transform functions
 

@@ -6,12 +6,12 @@ import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
 import models
 from tqdm import tqdm
+
 import torchvision.transforms as transforms
 import flow_transforms
-from scipy.ndimage import imread
-from scipy.misc import imsave
+from imageio import imread, imwrite
 import numpy as np
-from main import flow2rgb
+from util import flow2rgb
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__"))
@@ -22,11 +22,15 @@ parser = argparse.ArgumentParser(description='PyTorch FlowNet inference on a fol
 parser.add_argument('data', metavar='DIR',
                     help='path to images folder, image names must match \'[name]0.[ext]\' and \'[name]1.[ext]\'')
 parser.add_argument('pretrained', metavar='PTH', help='path to pre-trained model')
-parser.add_argument('--output', metavar='DIR', default=None,
+parser.add_argument('--output', '-o', metavar='DIR', default=None,
                     help='path to output folder. If not set, will be created in data folder')
+parser.add_argument('--output-value', '-v', metavar='VAL', choices=['raw', 'vis', 'both'], default='both',
+                    help='which value to output, between raw input (as a npy file) and color vizualisation (as an image file).'
+                    ' If not set, will output both')
 parser.add_argument('--div-flow', default=20, type=float,
                     help='value by which flow will be divided. overwritten if stored in pretrained file')
-parser.add_argument("--img-exts", default=['png', 'jpg', 'bmp'], nargs='*', type=str, help="images extensions to glob")
+parser.add_argument("--img-exts", metavar='EXT', default=['png', 'jpg', 'bmp', 'ppm'], nargs='*', type=str,
+                    help="images extensions to glob")
 parser.add_argument('--max_flow', default=None, type=float,
                     help='max flow value. Flow map color is saturated above this value. If not set, will use flow map\'s max value')
 parser.add_argument('--upsampling', '-u', choices=['nearest', 'bilinear'], default=None, help='if not set, will output FlowNet raw input,'
@@ -40,6 +44,14 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 def main():
     global args, save_path
     args = parser.parse_args()
+
+    if args.output_value == 'both':
+        output_string = "raw output and RGB visualization"
+    elif args.output_value == 'raw':
+        output_string = "raw output"
+    elif args.output_value == 'vis':
+        output_string = "RGB visualization"
+    print("=> will save " + output_string)
     data_dir = Path(args.data)
     print("=> fetching img pairs in '{}'".format(args.data))
     if args.output is None:
@@ -58,9 +70,9 @@ def main():
 
     img_pairs = []
     for ext in args.img_exts:
-        test_files = data_dir.files('*0.{}'.format(ext))
+        test_files = data_dir.files('*1.{}'.format(ext))
         for file in test_files:
-            img_pair = file.parent / (file.namebase[:-1] + '1.{}'.format(ext))
+            img_pair = file.parent / (file.namebase[:-1] + '2.{}'.format(ext))
             if img_pair.isfile():
                 img_pairs.append([file, img_pair])
 
@@ -92,9 +104,13 @@ def main():
         if args.upsampling is not None:
             output = F.interpolate(output, size=img1.size()[-2:], mode=args.upsampling, align_corners=False)
         for suffix, flow_output in zip(['flow', 'inv_flow'], output):
-            rgb_flow = flow2rgb(args.div_flow * flow_output, max_value=args.max_flow)
-            to_save = (rgb_flow * 255).astype(np.uint8).transpose(1,2,0)
-            imsave(save_path/'{}{}.png'.format(img1_file.namebase[:-1], suffix), to_save)
+            filename = save_path/'{}{}'.format(img1_file.namebase[:-1], suffix)
+            if args.output_value in['vis', 'both']:
+                rgb_flow = flow2rgb(args.div_flow * flow_output, max_value=args.max_flow)
+                to_save = (rgb_flow * 255).astype(np.uint8).transpose(1,2,0)
+                imwrite(filename + '.png', to_save)
+            if args.output_value in ['raw', 'both']:
+                np.save(filename + 'npy', flow_output.cpu().numpy())
 
 
 if __name__ == '__main__':

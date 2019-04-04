@@ -1,6 +1,5 @@
 import argparse
 import os
-import shutil
 import time
 
 import torch
@@ -16,12 +15,11 @@ import datasets
 from multiscaleloss import multiscaleEPE, realEPE
 import datetime
 from tensorboardX import SummaryWriter
-import numpy as np
+from util import flow2rgb, AverageMeter, save_checkpoint
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__"))
 dataset_names = sorted(name for name in datasets.__all__)
-
 
 parser = argparse.ArgumentParser(description='PyTorch FlowNet Training on several datasets',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -86,7 +84,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def main():
-    global args, best_EPE, save_path
+    global args, best_EPE
     args = parser.parse_args()
     save_path = '{},{},{}epochs{},b{},lr{}'.format(
         args.arch,
@@ -209,7 +207,7 @@ def main():
             'state_dict': model.module.state_dict(),
             'best_EPE': best_EPE,
             'div_flow': args.div_flow
-        }, is_best)
+        }, is_best, save_path)
 
 
 def train(train_loader, model, optimizer, epoch, train_writer):
@@ -306,49 +304,6 @@ def validate(val_loader, model, epoch, output_writers):
     print(' * EPE {:.3f}'.format(flow2_EPEs.avg))
 
     return flow2_EPEs.avg
-
-
-def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
-    torch.save(state, os.path.join(save_path,filename))
-    if is_best:
-        shutil.copyfile(os.path.join(save_path,filename), os.path.join(save_path,'model_best.pth.tar'))
-
-
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
-
-    def __repr__(self):
-        return '{:.3f} ({:.3f})'.format(self.val, self.avg)
-
-
-def flow2rgb(flow_map, max_value):
-    flow_map_np = flow_map.detach().cpu().numpy()
-    _, h, w = flow_map_np.shape
-    flow_map_np[:,(flow_map_np[0] == 0) & (flow_map_np[1] == 0)] = float('nan')
-    rgb_map = np.ones((3,h,w)).astype(np.float32)
-    if max_value is not None:
-        normalized_flow_map = flow_map_np / max_value
-    else:
-        normalized_flow_map = flow_map_np / (np.abs(flow_map_np).max())
-    rgb_map[0] += normalized_flow_map[0]
-    rgb_map[1] -= 0.5*(normalized_flow_map[0] + normalized_flow_map[1])
-    rgb_map[2] += normalized_flow_map[1]
-    return rgb_map.clip(0,1)
 
 
 if __name__ == '__main__':
