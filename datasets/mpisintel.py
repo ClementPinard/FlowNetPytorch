@@ -29,7 +29,7 @@ def make_dataset(dataset_dir, split, dataset_type='clean'):
         img1 = os.path.join(img_dir, scene_dir, '{}_{:04d}.png'.format(prefix, frame_nb))
         img2 = os.path.join(img_dir, scene_dir, '{}_{:04d}.png'.format(prefix, frame_nb + 1))
         flow_map = os.path.join(flow_dir,flow_map)
-        if not (os.path.isfile(os.path.join(dataset_dir,img1)) or os.path.isfile(os.path.join(dataset_dir,img2))):
+        if not (os.path.isfile(os.path.join(dataset_dir,img1)) and os.path.isfile(os.path.join(dataset_dir,img2))):
             continue
         images.append([[img1,img2],flow_map])
 
