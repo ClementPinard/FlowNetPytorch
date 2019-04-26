@@ -105,7 +105,7 @@ def main():
         for suffix, flow_output in zip(['flow', 'inv_flow'], output):
             filename = save_path/'{}{}'.format(img1_file.namebase[:-1], suffix)
             if args.output_value in['vis', 'both']:
-                rgb_flow = flow2rgb(args.div_flow * flow_output, max_value=args.max_flow)
+                rgb_flow = flow2rgb(args.div_flow * flow_output[0], max_value=args.max_flow)
                 to_save = (rgb_flow * 255).astype(np.uint8).transpose(1,2,0)
                 imwrite(filename + '.png', to_save)
             if args.output_value in ['raw', 'both']:
