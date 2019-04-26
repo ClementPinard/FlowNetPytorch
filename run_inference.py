@@ -110,7 +110,7 @@ def main():
                 imwrite(filename + '.png', to_save)
             if args.output_value in ['raw', 'both']:
                 # Make the flow map a HxWx2 array as in .flo files
-                to_save = (args.div_flow*flow_output[0]).cpu().numpy().transpose(1,2,0)
+                to_save = (args.div_flow*flow_output).cpu().numpy().transpose(1,2,0)
                 np.save(filename + '.npy', to_save)
 
 
