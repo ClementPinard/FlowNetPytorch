@@ -25,14 +25,21 @@ Directly feed the downloaded Network to the script, you don't need to uncompress
 These networks expect a BGR input (compared to RGB in pytorch). However, BGR order is not very important.
 
 ## Prerequisite
+these modules can be installed with `pip`
 
 ```
-pytorch >= 1.0.1
+pytorch >= 1.2
 tensorboard-pytorch
 tensorboardX >= 1.4
-spatial-correlation-sampler>=0.0.8
+spatial-correlation-sampler>=0.2.1
 imageio
 argparse
+path.py
+```
+
+or
+```bash
+pip install -r requirements.txt
 ```
 
 ## Training on Flying Chair Dataset
