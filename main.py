@@ -163,14 +163,17 @@ def main():
         network_data = None
         print("=> creating model '{}'".format(args.arch))
 
-    model = models.__dict__[args.arch](network_data).cuda()
-    model = torch.nn.DataParallel(model).cuda()
-    cudnn.benchmark = True
+    model = models.__dict__[args.arch](network_data).to(device)
 
     assert(args.solver in ['adam', 'sgd'])
     print('=> setting {} solver'.format(args.solver))
-    param_groups = [{'params': model.module.bias_parameters(), 'weight_decay': args.bias_decay},
-                    {'params': model.module.weight_parameters(), 'weight_decay': args.weight_decay}]
+    param_groups = [{'params': model.bias_parameters(), 'weight_decay': args.bias_decay},
+                    {'params': model.weight_parameters(), 'weight_decay': args.weight_decay}]
+
+    if device.type == "cuda":
+        model = torch.nn.DataParallel(model).cuda()
+        cudnn.benchmark = True
+
     if args.solver == 'adam':
         optimizer = torch.optim.Adam(param_groups, args.lr,
                                      betas=(args.momentum, args.beta))
