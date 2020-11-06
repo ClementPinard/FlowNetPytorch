@@ -163,10 +163,7 @@ def main():
         network_data = None
         print("=> creating model '{}'".format(args.arch))
 
-    if device.type == "cuda":
-        model = models.__dict__[args.arch](network_data).cuda()
-    else:
-        model = models.__dict__[args.arch](network_data).cpu()
+    model = models.__dict__[args.arch](network_data).to(device)
 
     assert(args.solver in ['adam', 'sgd'])
     print('=> setting {} solver'.format(args.solver))
