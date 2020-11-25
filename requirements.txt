@@ -2,7 +2,7 @@ torch>=1.2
 torchvision
 numpy
 spatial-correlation-sampler>=0.2.1
-tensorboardX>=1.4
+tensorboard
 imageio
 argparse
 path

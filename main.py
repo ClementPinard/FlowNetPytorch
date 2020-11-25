@@ -14,7 +14,7 @@ import models
 import datasets
 from multiscaleloss import multiscaleEPE, realEPE
 import datetime
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from util import flow2rgb, AverageMeter, save_checkpoint
 
 model_names = sorted(name for name in models.__dict__
