@@ -182,14 +182,22 @@ class RandomRotate(object):
         angle1 = applied_angle - diff/2
         angle2 = applied_angle + diff/2
         angle1_rad = angle1*np.pi/180
+        diff_rad = diff*np.pi/180
 
         h, w, _ = target.shape
 
-        def rotate_flow(i,j,k):
-            return -k*(j-w/2)*(diff*np.pi/180) + (1-k)*(i-h/2)*(diff*np.pi/180)
+        warped_coords = np.mgrid[:w, :h].T + target
+        warped_coords -= np.array([w / 2, h / 2])
 
-        rotate_flow_map = np.fromfunction(rotate_flow, target.shape)
-        target += rotate_flow_map
+        warped_coords_rot = np.zeros_like(target)
+
+        warped_coords_rot[..., 0] = \
+            (np.cos(diff_rad) - 1) * warped_coords[..., 0] + np.sin(diff_rad) * warped_coords[..., 1]
+
+        warped_coords_rot[..., 1] = \
+            -np.sin(diff_rad) * warped_coords[..., 0] + (np.cos(diff_rad) - 1) * warped_coords[..., 1]
+
+        target += warped_coords_rot
 
         inputs[0] = ndimage.interpolation.rotate(inputs[0], angle1, reshape=self.reshape, order=self.order)
         inputs[1] = ndimage.interpolation.rotate(inputs[1], angle2, reshape=self.reshape, order=self.order)
