@@ -167,7 +167,7 @@ class RandomRotate(object):
     angle: max angle of the rotation
     interpolation order: Default: 2 (bilinear)
     reshape: Default: false. If set to true, image size will be set to keep every pixel in the image.
-    diff_angle: Default: 0. Must stay less than 10 degrees, or linear approximation of flowmap will be off.
+    diff_angle: Default: 0.
     """
 
     def __init__(self, angle, diff_angle=0, order=2, reshape=False):

@@ -145,11 +145,10 @@ rotate: x,y,theta ->  (x*cos(theta)-x*sin(theta), y*cos(theta), x*sin(theta))
 ```
 
 #### Rotation applied on img2
-We consider the angle `theta` small enough to linearize `cos(theta)` to 1 and `sin(theta)` to `theta` .
+Let us consider a rotation by the angle `theta` from the image center.
 
-x flow map ( `flow[:,:,0]` ) will get a shift proportional to distance from center horizontal axis `j-h/2`
-
-y flow map ( `flow[:,:,1]` ) will get a shift proportional to distance from center vertical axis `i-w/2`
+We must tranform each flow vector based on the coordinates where it lands. On each coordinate `(i, j)`, we have:
 ```
-\for_all i,j flow[i,j] += theta*(j-h/2), theta*(i-w/2)
+flow[i, j, 0] += (cos(theta) - 1) * (i  - w/2 + flow[i, j, 0]) +    sin(theta)    * (j - h/2 + flow[flow[i, j, 1])
+flow[i, j, 1] +=   -sin(theta)    * (i  - w/2 + flow[i, j, 0]) + (cos(theta) - 1) * (j - h/2 + flow[flow[i, j, 1])
 ```
