@@ -149,6 +149,6 @@ Let us consider a rotation by the angle `theta` from the image center.
 
 We must tranform each flow vector based on the coordinates where it lands. On each coordinate `(i, j)`, we have:
 ```
-flow[i, j, 0] += (cos(theta) - 1) * (i  - w/2 + flow[i, j, 0]) +    sin(theta)    * (j - h/2 + flow[flow[i, j, 1])
-flow[i, j, 1] +=   -sin(theta)    * (i  - w/2 + flow[i, j, 0]) + (cos(theta) - 1) * (j - h/2 + flow[flow[i, j, 1])
+flow[i, j, 0] += (cos(theta) - 1) * (j  - w/2 + flow[i, j, 0]) +    sin(theta)    * (i - h/2 + flow[i, j, 1])
+flow[i, j, 1] +=   -sin(theta)    * (j  - w/2 + flow[i, j, 0]) + (cos(theta) - 1) * (i - h/2 + flow[i, j, 1])
 ```
