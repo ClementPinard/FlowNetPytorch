@@ -16,7 +16,7 @@ Two neural network models are currently provided, along with their batch norm va
  - **FlowNetCBN**
 
 ## Pretrained Models
-Thanks to [Kaixhin](https://github.com/Kaixhin) you can download a pretrained version of FlowNetS (from caffe, not from pytorch) [here](https://drive.google.com/open?id=0B5EC7HMbyk3CbjFPb0RuODI3NmM). This folder also contains trained networks from scratch.
+Thanks to [Kaixhin](https://github.com/Kaixhin) you can download a pretrained version of FlowNetS (from caffe, not from pytorch) [here](https://drive.google.com/drive/folders/0B5EC7HMbyk3CbjFPb0RuODI3NmM?resourcekey=0-SuPU4qVZzuB4s83ngjrAEg&usp=sharing). This folder also contains trained networks from scratch. 
 
 ### Note on networks loading
 Directly feed the downloaded Network to the script, you don't need to uncompress it even if your desktop environment tells you so.
@@ -71,7 +71,7 @@ tensorboard --logdir=/path/to/checkoints
 	
 ## Training results
 
- Models can be downloaded [here](https://drive.google.com/open?id=0B5EC7HMbyk3CbjFPb0RuODI3NmM) in the pytorch folder.
+ Models can be downloaded [here](https://drive.google.com/drive/folders/0B5EC7HMbyk3CbjFPb0RuODI3NmM?resourcekey=0-SuPU4qVZzuB4s83ngjrAEg&usp=sharing) in the pytorch folder.
  
  Models were trained with default options unless specified. Color warping was not used.
 
