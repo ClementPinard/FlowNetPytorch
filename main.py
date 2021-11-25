@@ -79,8 +79,14 @@ parser.add_argument('--div-flow', default=20,
                     help='value by which flow will be divided. Original value is 20 but 1 with batchNorm gives good results')
 parser.add_argument('--milestones', default=[100,150,200], metavar='N', nargs='*', help='epochs at which learning rate is divided by 2')
 
+parser.add_argument(
+    "--seed-split",
+    default=None,
+    help="Seed the train-val split to enforce reproducibility (consistent restart too)",
+)
+
 best_EPE = -1
-n_iter = 0
+n_iter = int(start_epoch)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -101,6 +107,9 @@ def main():
     print('=> will save everything to {}'.format(save_path))
     if not os.path.exists(save_path):
         os.makedirs(save_path)
+
+    if args.seed_split:
+        np.random.seed(int(args.seed_split))
 
     train_writer = SummaryWriter(os.path.join(save_path,'train'))
     test_writer = SummaryWriter(os.path.join(save_path,'test'))
@@ -294,7 +303,7 @@ def validate(val_loader, model, epoch, output_writers):
         end = time.time()
 
         if i < len(output_writers):  # log first output of first batches
-            if epoch == 0:
+            if epoch == args.start_epoch:
                 mean_values = torch.tensor([0.45,0.432,0.411], dtype=input.dtype).view(3,1,1)
                 output_writers[i].add_image('GroundTruth', flow2rgb(args.div_flow * target[0], max_value=10), 0)
                 output_writers[i].add_image('Inputs', (input[0,:3].cpu() + mean_values).clamp(0,1), 0)
