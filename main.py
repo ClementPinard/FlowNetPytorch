@@ -35,6 +35,12 @@ group.add_argument('-s', '--split-file', default=None, type=str,
 group.add_argument('--split-value', default=0.8, type=float,
                    help='test-val split proportion between 0 (only test) and 1 (only train), '
                         'will be overwritten if a split file is set')
+parser.add_argument(
+    "--split-seed",
+    type=int,
+    default=None,
+    help="Seed the train-val split to enforce reproducibility (consistent restart too)",
+)
 parser.add_argument('--arch', '-a', metavar='ARCH', default='flownets',
                     choices=model_names,
                     help='model architecture, overwritten if pretrained is specified: ' +
@@ -79,11 +85,7 @@ parser.add_argument('--div-flow', default=20,
                     help='value by which flow will be divided. Original value is 20 but 1 with batchNorm gives good results')
 parser.add_argument('--milestones', default=[100,150,200], metavar='N', nargs='*', help='epochs at which learning rate is divided by 2')
 
-parser.add_argument(
-    "--seed-split",
-    default=None,
-    help="Seed the train-val split to enforce reproducibility (consistent restart too)",
-)
+
 
 best_EPE = -1
 n_iter = int(start_epoch)
@@ -108,8 +110,8 @@ def main():
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    if args.seed_split:
-        np.random.seed(int(args.seed_split))
+    if args.seed_split is not None:
+        np.random.seed(args.seed_split)
 
     train_writer = SummaryWriter(os.path.join(save_path,'train'))
     test_writer = SummaryWriter(os.path.join(save_path,'test'))
