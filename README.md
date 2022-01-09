@@ -16,7 +16,7 @@ Two neural network models are currently provided, along with their batch norm va
  - **FlowNetCBN**
 
 ## Pretrained Models
-Thanks to [Kaixhin](https://github.com/Kaixhin) you can download a pretrained version of FlowNetS (from caffe, not from pytorch) [here](https://drive.google.com/drive/folders/0B5EC7HMbyk3CbjFPb0RuODI3NmM?resourcekey=0-SuPU4qVZzuB4s83ngjrAEg&usp=sharing). This folder also contains trained networks from scratch. 
+Thanks to [Kaixhin](https://github.com/Kaixhin) you can download a pretrained version of FlowNetS (from caffe, not from pytorch) [here](https://drive.google.com/drive/folders/1dTpSyc7rIYYG19p1uiDfilcsmSPNy-_3?usp=sharing). This folder also contains trained networks from scratch. 
 
 ### Note on networks loading
 Directly feed the downloaded Network to the script, you don't need to uncompress it even if your desktop environment tells you so.
@@ -71,7 +71,7 @@ tensorboard --logdir=/path/to/checkoints
 	
 ## Training results
 
- Models can be downloaded [here](https://drive.google.com/drive/folders/0B5EC7HMbyk3CbjFPb0RuODI3NmM?resourcekey=0-SuPU4qVZzuB4s83ngjrAEg&usp=sharing) in the pytorch folder.
+ Models can be downloaded [here](https://drive.google.com/drive/folders/1dTpSyc7rIYYG19p1uiDfilcsmSPNy-_3?usp=sharing) in the pytorch folder.
  
  Models were trained with default options unless specified. Color warping was not used.
 
@@ -97,7 +97,7 @@ Exact code for Optical Flow -> Color map can be found [here](main.py#L321)
 
 ## Running inference on a set of image pairs
 
-If you need to run the network on your images, you can download a pretrained network [here](https://drive.google.com/open?id=0B5EC7HMbyk3CbjFPb0RuODI3NmM) and launch the inference script on your folder of image pairs.
+If you need to run the network on your images, you can download a pretrained network [here](https://drive.google.com/drive/folders/1dTpSyc7rIYYG19p1uiDfilcsmSPNy-_3?usp=sharingM) and launch the inference script on your folder of image pairs.
 
 Your folder needs to have all the images pairs in the same location, with the name pattern
 ```
