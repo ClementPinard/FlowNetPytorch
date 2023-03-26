@@ -66,7 +66,7 @@ python main.py -h
 [Tensorboard-pytorch](https://github.com/lanpa/tensorboard-pytorch) is used for logging. To visualize result, simply type
 
 ```bash
-tensorboard --logdir=/path/to/checkoints
+tensorboard --logdir=/path/to/checkpoints
 ```
 	
 ## Training results
