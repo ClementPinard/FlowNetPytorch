@@ -88,6 +88,7 @@ parser.add_argument('--milestones', default=[100,150,200], metavar='N', nargs='*
 
 
 best_EPE = -1
+start_epoch = 0
 n_iter = int(start_epoch)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -110,8 +111,8 @@ def main():
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    if args.seed_split is not None:
-        np.random.seed(args.seed_split)
+    if args.splt_seed is not None:
+        np.random.seed(args.split_seed)
 
     train_writer = SummaryWriter(os.path.join(save_path,'train'))
     test_writer = SummaryWriter(os.path.join(save_path,'test'))
