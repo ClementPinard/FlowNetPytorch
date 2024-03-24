@@ -6,13 +6,13 @@ import numbers
 import types
 import scipy.ndimage as ndimage
 
-'''Set of tranform random routines that takes both input and target as arguments,
+"""Set of tranform random routines that takes both input and target as arguments,
 in order to have random but coherent transformations.
-inputs are PIL Image pairs and targets are ndarrays'''
+inputs are PIL Image pairs and targets are ndarrays"""
 
 
 class Compose(object):
-    """ Composes several co_transforms together.
+    """Composes several co_transforms together.
     For example:
     >>> co_transforms.Compose([
     >>>     co_transforms.CenterCrop(10),
@@ -25,15 +25,15 @@ class Compose(object):
 
     def __call__(self, input, target):
         for t in self.co_transforms:
-            input,target = t(input,target)
-        return input,target
+            input, target = t(input, target)
+        return input, target
 
 
 class ArrayToTensor(object):
     """Converts a numpy.ndarray (H x W x C) to a torch.FloatTensor of shape (C x H x W)."""
 
     def __call__(self, array):
-        assert(isinstance(array, np.ndarray))
+        assert isinstance(array, np.ndarray)
         array = np.transpose(array, (2, 0, 1))
         # handle numpy array
         tensor = torch.from_numpy(array)
@@ -48,8 +48,8 @@ class Lambda(object):
         assert isinstance(lambd, types.LambdaType)
         self.lambd = lambd
 
-    def __call__(self, input,target):
-        return self.lambd(input,target)
+    def __call__(self, input, target):
+        return self.lambd(input, target)
 
 
 class CenterCrop(object):
@@ -69,19 +69,19 @@ class CenterCrop(object):
         h1, w1, _ = inputs[0].shape
         h2, w2, _ = inputs[1].shape
         th, tw = self.size
-        x1 = int(round((w1 - tw) / 2.))
-        y1 = int(round((h1 - th) / 2.))
-        x2 = int(round((w2 - tw) / 2.))
-        y2 = int(round((h2 - th) / 2.))
+        x1 = int(round((w1 - tw) / 2.0))
+        y1 = int(round((h1 - th) / 2.0))
+        x2 = int(round((w2 - tw) / 2.0))
+        y2 = int(round((h2 - th) / 2.0))
 
-        inputs[0] = inputs[0][y1: y1 + th, x1: x1 + tw]
-        inputs[1] = inputs[1][y2: y2 + th, x2: x2 + tw]
-        target = target[y1: y1 + th, x1: x1 + tw]
-        return inputs,target
+        inputs[0] = inputs[0][y1 : y1 + th, x1 : x1 + tw]
+        inputs[1] = inputs[1][y2 : y2 + th, x2 : x2 + tw]
+        target = target[y1 : y1 + th, x1 : x1 + tw]
+        return inputs, target
 
 
 class Scale(object):
-    """ Rescales the inputs and target arrays to the given 'size'.
+    """Rescales the inputs and target arrays to the given 'size'.
     'size' will be the size of the smaller edge.
     For example, if height > width, then image will be
     rescaled to (size * height / width, size)
@@ -96,11 +96,11 @@ class Scale(object):
     def __call__(self, inputs, target):
         h, w, _ = inputs[0].shape
         if (w <= h and w == self.size) or (h <= w and h == self.size):
-            return inputs,target
+            return inputs, target
         if w < h:
-            ratio = self.size/w
+            ratio = self.size / w
         else:
-            ratio = self.size/h
+            ratio = self.size / h
 
         inputs[0] = ndimage.interpolation.zoom(inputs[0], ratio, order=self.order)
         inputs[1] = ndimage.interpolation.zoom(inputs[1], ratio, order=self.order)
@@ -122,43 +122,41 @@ class RandomCrop(object):
         else:
             self.size = size
 
-    def __call__(self, inputs,target):
+    def __call__(self, inputs, target):
         h, w, _ = inputs[0].shape
         th, tw = self.size
         if w == tw and h == th:
-            return inputs,target
+            return inputs, target
 
         x1 = random.randint(0, w - tw)
         y1 = random.randint(0, h - th)
-        inputs[0] = inputs[0][y1: y1 + th,x1: x1 + tw]
-        inputs[1] = inputs[1][y1: y1 + th,x1: x1 + tw]
-        return inputs, target[y1: y1 + th,x1: x1 + tw]
+        inputs[0] = inputs[0][y1 : y1 + th, x1 : x1 + tw]
+        inputs[1] = inputs[1][y1 : y1 + th, x1 : x1 + tw]
+        return inputs, target[y1 : y1 + th, x1 : x1 + tw]
 
 
 class RandomHorizontalFlip(object):
-    """Randomly horizontally flips the given PIL.Image with a probability of 0.5
-    """
+    """Randomly horizontally flips the given PIL.Image with a probability of 0.5"""
 
     def __call__(self, inputs, target):
         if random.random() < 0.5:
             inputs[0] = np.copy(np.fliplr(inputs[0]))
             inputs[1] = np.copy(np.fliplr(inputs[1]))
             target = np.copy(np.fliplr(target))
-            target[:,:,0] *= -1
-        return inputs,target
+            target[:, :, 0] *= -1
+        return inputs, target
 
 
 class RandomVerticalFlip(object):
-    """Randomly horizontally flips the given PIL.Image with a probability of 0.5
-    """
+    """Randomly horizontally flips the given PIL.Image with a probability of 0.5"""
 
     def __call__(self, inputs, target):
         if random.random() < 0.5:
             inputs[0] = np.copy(np.flipud(inputs[0]))
             inputs[1] = np.copy(np.flipud(inputs[1]))
             target = np.copy(np.flipud(target))
-            target[:,:,1] *= -1
-        return inputs,target
+            target[:, :, 1] *= -1
+        return inputs, target
 
 
 class RandomRotate(object):
@@ -176,13 +174,13 @@ class RandomRotate(object):
         self.order = order
         self.diff_angle = diff_angle
 
-    def __call__(self, inputs,target):
-        applied_angle = random.uniform(-self.angle,self.angle)
-        diff = random.uniform(-self.diff_angle,self.diff_angle)
-        angle1 = applied_angle - diff/2
-        angle2 = applied_angle + diff/2
-        angle1_rad = angle1*np.pi/180
-        diff_rad = diff*np.pi/180
+    def __call__(self, inputs, target):
+        applied_angle = random.uniform(-self.angle, self.angle)
+        diff = random.uniform(-self.diff_angle, self.diff_angle)
+        angle1 = applied_angle - diff / 2
+        angle2 = applied_angle + diff / 2
+        angle1_rad = angle1 * np.pi / 180
+        diff_rad = diff * np.pi / 180
 
         h, w, _ = target.shape
 
@@ -191,22 +189,37 @@ class RandomRotate(object):
 
         warped_coords_rot = np.zeros_like(target)
 
-        warped_coords_rot[..., 0] = \
-            (np.cos(diff_rad) - 1) * warped_coords[..., 0] + np.sin(diff_rad) * warped_coords[..., 1]
+        warped_coords_rot[..., 0] = (np.cos(diff_rad) - 1) * warped_coords[
+            ..., 0
+        ] + np.sin(diff_rad) * warped_coords[..., 1]
 
-        warped_coords_rot[..., 1] = \
-            -np.sin(diff_rad) * warped_coords[..., 0] + (np.cos(diff_rad) - 1) * warped_coords[..., 1]
+        warped_coords_rot[..., 1] = (
+            -np.sin(diff_rad) * warped_coords[..., 0]
+            + (np.cos(diff_rad) - 1) * warped_coords[..., 1]
+        )
 
         target += warped_coords_rot
 
-        inputs[0] = ndimage.interpolation.rotate(inputs[0], angle1, reshape=self.reshape, order=self.order)
-        inputs[1] = ndimage.interpolation.rotate(inputs[1], angle2, reshape=self.reshape, order=self.order)
-        target = ndimage.interpolation.rotate(target, angle1, reshape=self.reshape, order=self.order)
+        inputs[0] = ndimage.interpolation.rotate(
+            inputs[0], angle1, reshape=self.reshape, order=self.order
+        )
+        inputs[1] = ndimage.interpolation.rotate(
+            inputs[1], angle2, reshape=self.reshape, order=self.order
+        )
+        target = ndimage.interpolation.rotate(
+            target, angle1, reshape=self.reshape, order=self.order
+        )
         # flow vectors must be rotated too! careful about Y flow which is upside down
         target_ = np.copy(target)
-        target[:,:,0] = np.cos(angle1_rad)*target_[:,:,0] + np.sin(angle1_rad)*target_[:,:,1]
-        target[:,:,1] = -np.sin(angle1_rad)*target_[:,:,0] + np.cos(angle1_rad)*target_[:,:,1]
-        return inputs,target
+        target[:, :, 0] = (
+            np.cos(angle1_rad) * target_[:, :, 0]
+            + np.sin(angle1_rad) * target_[:, :, 1]
+        )
+        target[:, :, 1] = (
+            -np.sin(angle1_rad) * target_[:, :, 0]
+            + np.cos(angle1_rad) * target_[:, :, 1]
+        )
+        return inputs, target
 
 
 class RandomTranslate(object):
@@ -216,7 +229,7 @@ class RandomTranslate(object):
         else:
             self.translation = translation
 
-    def __call__(self, inputs,target):
+    def __call__(self, inputs, target):
         h, w, _ = inputs[0].shape
         th, tw = self.translation
         tw = random.randint(-tw, tw)
@@ -224,14 +237,14 @@ class RandomTranslate(object):
         if tw == 0 and th == 0:
             return inputs, target
         # compute x1,x2,y1,y2 for img1 and target, and x3,x4,y3,y4 for img2
-        x1,x2,x3,x4 = max(0,tw), min(w+tw,w), max(0,-tw), min(w-tw,w)
-        y1,y2,y3,y4 = max(0,th), min(h+th,h), max(0,-th), min(h-th,h)
+        x1, x2, x3, x4 = max(0, tw), min(w + tw, w), max(0, -tw), min(w - tw, w)
+        y1, y2, y3, y4 = max(0, th), min(h + th, h), max(0, -th), min(h - th, h)
 
-        inputs[0] = inputs[0][y1:y2,x1:x2]
-        inputs[1] = inputs[1][y3:y4,x3:x4]
-        target = target[y1:y2,x1:x2]
-        target[:,:,0] += tw
-        target[:,:,1] += th
+        inputs[0] = inputs[0][y1:y2, x1:x2]
+        inputs[1] = inputs[1][y3:y4, x3:x4]
+        target = target[y1:y2, x1:x2]
+        target[:, :, 0] += tw
+        target[:, :, 1] += th
 
         return inputs, target
 
@@ -246,13 +259,13 @@ class RandomColorWarp(object):
         random_mean = np.random.uniform(-self.mean_range, self.mean_range, 3)
         random_order = np.random.permutation(3)
 
-        inputs[0] *= (1 + random_std)
+        inputs[0] *= 1 + random_std
         inputs[0] += random_mean
 
-        inputs[1] *= (1 + random_std)
+        inputs[1] *= 1 + random_std
         inputs[1] += random_mean
 
-        inputs[0] = inputs[0][:,:,random_order]
-        inputs[1] = inputs[1][:,:,random_order]
+        inputs[0] = inputs[0][:, :, random_order]
+        inputs[1] = inputs[1][:, :, random_order]
 
         return inputs, target
