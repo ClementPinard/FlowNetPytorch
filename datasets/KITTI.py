@@ -8,7 +8,7 @@ import flow_transforms
 
 try:
     import cv2
-except ImportError as e:
+except ImportError:
     import warnings
 
     with warnings.catch_warnings():
@@ -41,7 +41,7 @@ def load_flow_from_png(png_path):
     return flo_img
 
 
-def make_dataset(dir, split, occ=True):
+def make_dataset(dir, split, split_save_path, occ=True):
     """Will search in training folder for folders 'flow_noc' or 'flow_occ'
     and 'colored_0' (KITTI 2012) or 'image_2' (KITTI 2015)"""
     flow_dir = "flow_occ" if occ else "flow_noc"
@@ -65,7 +65,7 @@ def make_dataset(dir, split, occ=True):
             continue
         images.append([[img1, img2], flow_map])
 
-    return split2list(images, split, default_split=0.9)
+    return split2list(images, split, split_save_path, default_split=0.9)
 
 
 def KITTI_loader(root, path_imgs, path_flo):
@@ -77,9 +77,14 @@ def KITTI_loader(root, path_imgs, path_flo):
 
 
 def KITTI_occ(
-    root, transform=None, target_transform=None, co_transform=None, split=None
+    root,
+    transform=None,
+    target_transform=None,
+    co_transform=None,
+    split=None,
+    split_save_path=None,
 ):
-    train_list, test_list = make_dataset(root, split, True)
+    train_list, test_list = make_dataset(root, split, split_save_path, True)
     train_dataset = ListDataset(
         root, train_list, transform, target_transform, co_transform, loader=KITTI_loader
     )
@@ -97,9 +102,14 @@ def KITTI_occ(
 
 
 def KITTI_noc(
-    root, transform=None, target_transform=None, co_transform=None, split=None
+    root,
+    transform=None,
+    target_transform=None,
+    co_transform=None,
+    split=None,
+    split_save_path=None,
 ):
-    train_list, test_list = make_dataset(root, split, False)
+    train_list, test_list = make_dataset(root, split, split_save_path, False)
     train_dataset = ListDataset(
         root, train_list, transform, target_transform, co_transform, loader=KITTI_loader
     )

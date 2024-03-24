@@ -16,6 +16,7 @@ from multiscaleloss import multiscaleEPE, realEPE
 import datetime
 from torch.utils.tensorboard import SummaryWriter
 from util import flow2rgb, AverageMeter, save_checkpoint
+import numpy as np
 
 model_names = sorted(
     name for name in models.__dict__ if name.islower() and not name.startswith("__")
@@ -161,7 +162,7 @@ parser.add_argument(
 
 
 best_EPE = -1
-n_iter = int(start_epoch)
+n_iter = 0
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -184,8 +185,8 @@ def main():
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    if args.seed_split is not None:
-        np.random.seed(args.seed_split)
+    if args.split_seed is not None:
+        np.random.seed(args.split_seed)
 
     train_writer = SummaryWriter(os.path.join(save_path, "train"))
     test_writer = SummaryWriter(os.path.join(save_path, "test"))
@@ -236,6 +237,7 @@ def main():
         target_transform=target_transform,
         co_transform=co_transform,
         split=args.split_file if args.split_file else args.split_value,
+        split_save_path=os.path.join(save_path, "split.txt"),
     )
     print(
         "{} samples found, {} train samples and {} test samples ".format(
@@ -295,12 +297,11 @@ def main():
     )
 
     for epoch in range(args.start_epoch, args.epochs):
-        scheduler.step()
-
         # train for one epoch
         train_loss, train_EPE = train(
             train_loader, model, optimizer, epoch, train_writer
         )
+        scheduler.step()
         train_writer.add_scalar("mean EPE", train_EPE, epoch)
 
         # evaluate on validation set

@@ -4,7 +4,7 @@ from .listdataset import ListDataset
 from .util import split2list
 
 
-def make_dataset(dir, split=None):
+def make_dataset(dir, split=None, split_save_path=None):
     """Will search for triplets that go by the pattern '[name]_img1.ppm  [name]_img2.ppm    [name]_flow.flo'"""
     images = []
     for flow_map in sorted(glob.glob(os.path.join(dir, "*_flow.flo"))):
@@ -19,14 +19,18 @@ def make_dataset(dir, split=None):
             continue
 
         images.append([[img1, img2], flow_map])
-
-    return split2list(images, split, default_split=0.97)
+    return split2list(images, split, split_save_path, default_split=0.97)
 
 
 def flying_chairs(
-    root, transform=None, target_transform=None, co_transform=None, split=None
+    root,
+    transform=None,
+    target_transform=None,
+    co_transform=None,
+    split=None,
+    split_save_path=None,
 ):
-    train_list, test_list = make_dataset(root, split)
+    train_list, test_list = make_dataset(root, split, split_save_path)
     train_dataset = ListDataset(
         root, train_list, transform, target_transform, co_transform
     )

@@ -12,7 +12,7 @@ The dataset is not very big, you might want to only pretrain on it for flownet
 """
 
 
-def make_dataset(dataset_dir, split, dataset_type="clean"):
+def make_dataset(dataset_dir, split, split_save_path, dataset_type="clean"):
     flow_dir = "flow"
     assert os.path.isdir(os.path.join(dataset_dir, flow_dir))
     img_dir = dataset_type
@@ -42,13 +42,18 @@ def make_dataset(dataset_dir, split, dataset_type="clean"):
             continue
         images.append([[img1, img2], flow_map])
 
-    return split2list(images, split, default_split=0.87)
+    return split2list(images, split, split_save_path, default_split=0.87)
 
 
 def mpi_sintel_clean(
-    root, transform=None, target_transform=None, co_transform=None, split=None
+    root,
+    transform=None,
+    target_transform=None,
+    co_transform=None,
+    split=None,
+    split_save_path=None,
 ):
-    train_list, test_list = make_dataset(root, split, "clean")
+    train_list, test_list = make_dataset(root, split, split_save_path, "clean")
     train_dataset = ListDataset(
         root, train_list, transform, target_transform, co_transform
     )
@@ -64,9 +69,14 @@ def mpi_sintel_clean(
 
 
 def mpi_sintel_final(
-    root, transform=None, target_transform=None, co_transform=None, split=None
+    root,
+    transform=None,
+    target_transform=None,
+    co_transform=None,
+    split=None,
+    split_save_path=None,
 ):
-    train_list, test_list = make_dataset(root, split, "final")
+    train_list, test_list = make_dataset(root, split, split_save_path, "final")
     train_dataset = ListDataset(
         root, train_list, transform, target_transform, co_transform
     )
@@ -82,7 +92,12 @@ def mpi_sintel_final(
 
 
 def mpi_sintel_both(
-    root, transform=None, target_transform=None, co_transform=None, split=None
+    root,
+    transform=None,
+    target_transform=None,
+    co_transform=None,
+    split=None,
+    split_save_path=None,
 ):
     """load images from both clean and final folders.
     We cannot shuffle input, because it would very likely cause data snooping
@@ -91,8 +106,8 @@ def mpi_sintel_both(
         split, str
     ), "To avoid data snooping, you must provide a static list of train/val when dealing with both clean and final."
     " Look at Sintel_train_val.txt for an example"
-    train_list1, test_list1 = make_dataset(root, split, "clean")
-    train_list2, test_list2 = make_dataset(root, split, "final")
+    train_list1, test_list1 = make_dataset(root, split, split_save_path, "clean")
+    train_list2, test_list2 = make_dataset(root, split, split_save_path, "final")
     train_dataset = ListDataset(
         root, train_list1 + train_list2, transform, target_transform, co_transform
     )
