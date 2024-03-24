@@ -167,7 +167,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def main():
-    global args, best_EPE
+    global args, best_EPE, n_iter
     args = parser.parse_args()
     save_path = "{},{},{}epochs{},b{},lr{}".format(
         args.arch,
@@ -244,6 +244,7 @@ def main():
             len(test_set) + len(train_set), len(train_set), len(test_set)
         )
     )
+    n_iter = args.start_epoch * len(train_set)
     train_loader = torch.utils.data.DataLoader(
         train_set,
         batch_size=args.batch_size,
